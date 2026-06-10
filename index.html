@@ -1,0 +1,2278 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="theme-color" content="#1a6b3c">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Buffalo Manager</title>
+<link rel="manifest" href="#" id="manifest-link">
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=Lora:wght@400;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+
+<style>
+:root {
+  --primary: #1a6b3c;
+  --primary-light: #2d9c5a;
+  --primary-dark: #0f4225;
+  --accent: #f5a623;
+  --accent-light: #ffc55a;
+  --bg: #f4f7f5;
+  --bg2: #ffffff;
+  --bg3: #eaf2ed;
+  --text: #1a2e23;
+  --text2: #4a6557;
+  --text3: #8aaa98;
+  --border: #d0e4d8;
+  --card: #ffffff;
+  --shadow: 0 2px 12px rgba(26,107,60,0.10);
+  --shadow-lg: 0 8px 32px rgba(26,107,60,0.15);
+  --radius: 16px;
+  --radius-sm: 10px;
+  --nav-h: 68px;
+  --header-h: 60px;
+  --danger: #e05252;
+  --warning: #f5a623;
+  --success: #2d9c5a;
+  --info: #3a7bd5;
+  --pink: #ec4899;
+}
+[data-theme="dark"] {
+  --bg: #0e1a14;
+  --bg2: #162318;
+  --bg3: #1e3025;
+  --text: #e8f5ee;
+  --text2: #9dc4ad;
+  --text3: #5a7d6a;
+  --border: #2a4535;
+  --card: #1a2e23;
+  --shadow: 0 2px 12px rgba(0,0,0,0.35);
+  --shadow-lg: 0 8px 32px rgba(0,0,0,0.45);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+html, body { height: 100%; font-family: 'Nunito', sans-serif; background: var(--bg); color: var(--text); overflow: hidden; }
+
+/* ===== LAYOUT ===== */
+#app { display: flex; flex-direction: column; height: 100%; }
+#header {
+  height: var(--header-h); background: var(--primary); color: #fff;
+  display: flex; align-items: center; padding: 0 16px; gap: 12px;
+  position: relative; z-index: 10; flex-shrink: 0;
+  box-shadow: 0 2px 16px rgba(0,0,0,0.2);
+}
+#header .logo-wrap { width: 36px; height: 36px; border-radius: 50%; overflow: hidden; background: rgba(255,255,255,0.2); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+#header .logo-wrap img { width: 100%; height: 100%; object-fit: cover; }
+#header h1 { font-size: 18px; font-weight: 800; flex: 1; letter-spacing: -0.3px; }
+#header .hdr-actions { display: flex; gap: 8px; }
+#header .hdr-btn { background: rgba(255,255,255,0.18); border: none; color: #fff; width: 36px; height: 36px; border-radius: 50%; font-size: 18px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background .2s; }
+#header .hdr-btn:active { background: rgba(255,255,255,0.3); }
+
+#content { flex: 1; overflow-y: auto; overflow-x: hidden; padding-bottom: var(--nav-h); }
+#nav {
+  height: var(--nav-h); background: var(--card); border-top: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-around;
+  position: fixed; bottom: 0; left: 0; right: 0; z-index: 100;
+  box-shadow: 0 -2px 16px rgba(0,0,0,0.08);
+}
+.nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 8px 4px; cursor: pointer; color: var(--text3); font-size: 10px; font-weight: 700; transition: color .2s; }
+.nav-item .nav-ico { font-size: 22px; transition: transform .2s; }
+.nav-item.active { color: var(--primary); }
+.nav-item.active .nav-ico { transform: scale(1.15); }
+
+/* ===== SCREENS ===== */
+.screen { display: none; padding: 16px; }
+.screen.active { display: block; }
+
+/* ===== CARDS ===== */
+.card { background: var(--card); border-radius: var(--radius); padding: 16px; box-shadow: var(--shadow); margin-bottom: 14px; }
+.card-title { font-size: 13px; font-weight: 700; color: var(--text3); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 10px; }
+
+/* ===== DASHBOARD ===== */
+.stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 14px; }
+.stat-card {
+  background: var(--card); border-radius: var(--radius); padding: 16px;
+  box-shadow: var(--shadow); display: flex; flex-direction: column; gap: 4px;
+  border-left: 4px solid var(--primary);
+}
+.stat-card.accent { border-left-color: var(--accent); }
+.stat-card.info { border-left-color: var(--info); }
+.stat-card.danger { border-left-color: var(--danger); }
+.stat-card.pregnant { border-left-color: #ec4899; }
+.stat-val { font-size: 28px; font-weight: 900; color: var(--text); line-height: 1; }
+.stat-lbl { font-size: 12px; color: var(--text3); font-weight: 700; }
+
+/* ===== BUFFALO LIST ===== */
+.buffalo-card {
+  background: var(--card); border-radius: var(--radius); padding: 14px;
+  box-shadow: var(--shadow); margin-bottom: 12px; display: flex; gap: 14px;
+  align-items: center; cursor: pointer; transition: transform .15s, box-shadow .15s;
+  border: 1.5px solid transparent;
+}
+.buffalo-card:active { transform: scale(0.98); }
+.buffalo-card.selected { border-color: var(--primary); }
+.buffalo-avatar {
+  width: 60px; height: 60px; border-radius: 14px; object-fit: cover;
+  background: var(--bg3); flex-shrink: 0; font-size: 28px;
+  display: flex; align-items: center; justify-content: center; overflow: hidden;
+}
+.buffalo-avatar img { width: 100%; height: 100%; object-fit: cover; border-radius: 14px; }
+.buffalo-info { flex: 1; min-width: 0; }
+.buffalo-name { font-size: 16px; font-weight: 800; color: var(--text); }
+.buffalo-sub { font-size: 12px; color: var(--text3); margin-top: 2px; }
+.buffalo-tags { display: flex; gap: 6px; margin-top: 6px; flex-wrap: wrap; }
+.badge { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 20px; background: var(--bg3); color: var(--text2); }
+.badge.male { background: #dbeafe; color: #1d4ed8; }
+.badge.female { background: #fce7f3; color: #be185d; }
+
+/* ===== FAB ===== */
+.fab {
+  position: fixed; right: 20px; bottom: calc(var(--nav-h) + 16px); z-index: 50;
+  width: 56px; height: 56px; border-radius: 50%; background: var(--primary);
+  color: #fff; font-size: 28px; border: none; box-shadow: var(--shadow-lg);
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+  transition: transform .2s, background .2s;
+}
+.fab:active { transform: scale(0.92); background: var(--primary-dark); }
+.fab.hidden { display: none; }
+
+/* ===== MODAL ===== */
+.modal-overlay {
+  display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5);
+  z-index: 200; align-items: flex-end; justify-content: center;
+  backdrop-filter: blur(2px);
+}
+.modal-overlay.open { display: flex; }
+.modal {
+  background: var(--bg2); border-radius: 24px 24px 0 0; width: 100%;
+  max-height: 92vh; overflow-y: auto; padding: 0 0 40px 0;
+  animation: slideUp .3s ease;
+}
+@keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+.modal-header {
+  position: sticky; top: 0; background: var(--bg2); padding: 16px 20px 12px;
+  display: flex; align-items: center; gap: 10px; border-bottom: 1px solid var(--border);
+  z-index: 5;
+}
+.modal-title { font-size: 17px; font-weight: 800; flex: 1; }
+.modal-close { background: var(--bg3); border: none; color: var(--text2); width: 32px; height: 32px; border-radius: 50%; font-size: 18px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+.modal-body { padding: 16px 20px; }
+
+/* ===== FORMS ===== */
+.form-group { margin-bottom: 16px; }
+.form-label { font-size: 13px; font-weight: 700; color: var(--text2); margin-bottom: 6px; display: block; }
+.form-control {
+  width: 100%; padding: 12px 14px; border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm); background: var(--bg); color: var(--text);
+  font-family: inherit; font-size: 15px; outline: none; transition: border .2s;
+}
+.form-control:focus { border-color: var(--primary); }
+select.form-control { appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%238aaa98' stroke-width='2' fill='none' stroke-linecap='round'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 14px center; padding-right: 36px; }
+textarea.form-control { resize: vertical; min-height: 80px; }
+
+
+/* ===== BUTTONS ===== */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  padding: 12px 20px; border-radius: var(--radius-sm); font-family: inherit;
+  font-size: 15px; font-weight: 700; border: none; cursor: pointer; transition: all .2s;
+}
+.btn-primary { background: var(--primary); color: #fff; width: 100%; }
+.btn-primary:active { background: var(--primary-dark); }
+.btn-outline { background: transparent; color: var(--primary); border: 2px solid var(--primary); }
+.btn-danger { background: var(--danger); color: #fff; }
+.btn-sm { padding: 8px 14px; font-size: 13px; border-radius: 8px; }
+.btn-ghost { background: var(--bg3); color: var(--text2); }
+.btn-row { display: flex; gap: 10px; }
+.btn-row .btn { flex: 1; }
+
+/* ===== TABS ===== */
+.tabs { display: flex; background: var(--bg3); border-radius: var(--radius-sm); padding: 4px; margin-bottom: 16px; gap: 2px; }
+.tab { flex: 1; padding: 9px 8px; text-align: center; font-size: 13px; font-weight: 700; border-radius: 8px; cursor: pointer; color: var(--text3); transition: all .2s; }
+.tab.active { background: var(--card); color: var(--primary); box-shadow: var(--shadow); }
+
+/* ===== SEARCH ===== */
+.search-bar {
+  display: flex; gap: 10px; margin-bottom: 16px; align-items: center;
+  background: var(--card); border-radius: var(--radius); padding: 8px 14px;
+  box-shadow: var(--shadow); border: 1.5px solid var(--border);
+}
+.search-bar input { flex: 1; border: none; background: transparent; outline: none; font-family: inherit; font-size: 15px; color: var(--text); }
+.search-bar input::placeholder { color: var(--text3); }
+.search-ico { color: var(--text3); font-size: 18px; }
+
+/* ===== MILK LOG ===== */
+.milk-row { display: flex; gap: 10px; align-items: flex-end; }
+.milk-row .form-group { flex: 1; }
+.milk-total { background: var(--bg3); border-radius: var(--radius-sm); padding: 10px 14px; font-weight: 800; color: var(--primary); font-size: 18px; text-align: center; margin-bottom: 16px; }
+
+/* ===== HEALTH ===== */
+.health-item { background: var(--bg3); border-radius: var(--radius-sm); padding: 12px 14px; margin-bottom: 10px; border-left: 3px solid var(--primary); }
+.health-item.vaccine { border-left-color: var(--success); }
+.health-item.treatment { border-left-color: var(--accent); }
+.health-item.vet { border-left-color: var(--info); }
+.health-meta { font-size: 12px; color: var(--text3); margin-top: 4px; }
+
+/* ===== REMINDER ===== */
+.reminder-item { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--border); }
+.reminder-item:last-child { border-bottom: none; }
+.reminder-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--accent); flex-shrink: 0; }
+.reminder-dot.overdue { background: var(--danger); }
+.reminder-dot.ok { background: var(--success); }
+
+/* ===== SETTINGS ===== */
+.settings-section { margin-bottom: 20px; }
+.settings-item {
+  background: var(--card); border-radius: var(--radius-sm); padding: 14px 16px;
+  display: flex; align-items: center; gap: 14px; margin-bottom: 10px;
+  box-shadow: var(--shadow); cursor: pointer; border: 1.5px solid transparent;
+}
+.settings-item:active { border-color: var(--primary); }
+.settings-item .s-ico { font-size: 22px; width: 40px; height: 40px; border-radius: 10px; background: var(--bg3); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.settings-item .s-info { flex: 1; }
+.settings-item .s-title { font-size: 15px; font-weight: 700; }
+.settings-item .s-sub { font-size: 12px; color: var(--text3); margin-top: 1px; }
+.settings-item .s-arrow { color: var(--text3); font-size: 18px; }
+
+/* ===== TOGGLE ===== */
+.toggle-wrap { display: flex; align-items: center; gap: 12px; }
+.toggle { position: relative; width: 50px; height: 28px; flex-shrink: 0; }
+.toggle input { opacity: 0; width: 0; height: 0; }
+.toggle-slider { position: absolute; inset: 0; background: var(--border); border-radius: 28px; cursor: pointer; transition: .3s; }
+.toggle-slider:before { content: ''; position: absolute; width: 22px; height: 22px; left: 3px; top: 3px; background: #fff; border-radius: 50%; transition: .3s; box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
+.toggle input:checked + .toggle-slider { background: var(--primary); }
+.toggle input:checked + .toggle-slider:before { transform: translateX(22px); }
+
+/* ===== EMPTY STATE ===== */
+.empty-state { text-align: center; padding: 48px 20px; }
+.empty-ico { font-size: 64px; margin-bottom: 16px; }
+.empty-title { font-size: 18px; font-weight: 800; color: var(--text2); margin-bottom: 6px; }
+.empty-sub { font-size: 14px; color: var(--text3); }
+
+/* ===== CHART WRAP ===== */
+.chart-wrap { position: relative; height: 200px; }
+
+/* ===== FARM HELP ===== */
+.help-result { background: var(--card); border-radius: var(--radius-sm); padding: 14px; box-shadow: var(--shadow); margin-bottom: 10px; }
+.help-result-title { font-size: 15px; font-weight: 700; color: var(--primary); margin-bottom: 4px; }
+.help-result-url { font-size: 11px; color: var(--text3); margin-bottom: 6px; word-break: break-all; }
+.help-result-desc { font-size: 13px; color: var(--text2); line-height: 1.5; }
+
+/* ===== TOAST ===== */
+#toast {
+  position: fixed; bottom: calc(var(--nav-h) + 16px); left: 50%; transform: translateX(-50%);
+  background: #1a2e23; color: #fff; padding: 10px 20px; border-radius: 30px;
+  font-size: 14px; font-weight: 700; z-index: 999; opacity: 0; pointer-events: none;
+  transition: opacity .3s; white-space: nowrap; max-width: 90vw;
+}
+#toast.show { opacity: 1; }
+
+/* ===== COLOR PICKER ROW ===== */
+.color-row { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 10px; }
+.color-swatch { width: 36px; height: 36px; border-radius: 50%; cursor: pointer; border: 3px solid transparent; transition: border .2s; }
+.color-swatch.active { border-color: var(--text); }
+
+/* ===== SECTION HEADER ===== */
+.section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+.section-header h2 { font-size: 20px; font-weight: 900; }
+
+/* ===== DETAIL VIEW ===== */
+.detail-hero { background: var(--primary); border-radius: var(--radius); padding: 20px; margin-bottom: 14px; display: flex; gap: 16px; align-items: center; }
+.detail-avatar { width: 80px; height: 80px; border-radius: 16px; background: rgba(255,255,255,0.2); display: flex; align-items: center; justify-content: center; font-size: 40px; overflow: hidden; flex-shrink: 0; }
+.detail-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.detail-name { font-size: 22px; font-weight: 900; color: #fff; }
+.detail-sub { font-size: 13px; color: rgba(255,255,255,0.75); margin-top: 2px; }
+.detail-badges { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
+.detail-badge { background: rgba(255,255,255,0.2); color: #fff; font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 20px; }
+
+.info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.info-item { background: var(--bg3); border-radius: var(--radius-sm); padding: 10px 12px; }
+.info-item-label { font-size: 11px; color: var(--text3); font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
+.info-item-val { font-size: 15px; font-weight: 800; color: var(--text); margin-top: 2px; }
+.info-item.full { grid-column: 1/-1; }
+
+/* ===== LOADING ===== */
+.spinner { display: inline-block; width: 20px; height: 20px; border: 3px solid rgba(255,255,255,0.3); border-top-color: #fff; border-radius: 50%; animation: spin .7s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ===== SCROLLBAR ===== */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+/* Custom fields */
+.custom-field-row { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; }
+.custom-field-row .form-control { flex: 1; }
+
+/* Milk history table */
+.milk-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.milk-table th { background: var(--bg3); padding: 8px 10px; text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text3); }
+.milk-table td { padding: 9px 10px; border-bottom: 1px solid var(--border); }
+.milk-table tr:last-child td { border-bottom: none; }
+
+/* Page transition */
+.screen { animation: fadeIn .2s ease; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+
+/* ===== BACKUP PANEL ===== */
+.backup-option {
+  display: flex; align-items: center; gap: 14px; padding: 14px 16px;
+  background: var(--card); border-radius: var(--radius-sm); margin-bottom: 10px;
+  cursor: pointer; border: 1.5px solid var(--border); transition: all .18s;
+  box-shadow: var(--shadow);
+}
+.backup-option:active { transform: scale(0.98); border-color: var(--primary); }
+.backup-ico {
+  width: 44px; height: 44px; border-radius: 12px; display: flex;
+  align-items: center; justify-content: center; font-size: 22px; flex-shrink: 0;
+}
+.backup-info { flex: 1; }
+.backup-title { font-size: 15px; font-weight: 700; color: var(--text); }
+.backup-sub { font-size: 12px; color: var(--text3); margin-top: 2px; }
+.backup-arrow { font-size: 22px; color: var(--text3); font-weight: 300; }
+.backup-stat-chip {
+  flex: 1; background: var(--bg3); border-radius: var(--radius-sm); padding: 10px 12px; text-align: center;
+}
+.backup-stat-chip .bsv { font-size: 20px; font-weight: 900; color: var(--primary); }
+.backup-stat-chip .bsl { font-size: 11px; color: var(--text3); font-weight: 700; margin-top: 2px; }
+
+/* Header backup btn pulse when data exists */
+#backupBtn { position: relative; }
+#backupBtn.has-data::after {
+  content: ''; position: absolute; top: 6px; right: 6px;
+  width: 7px; height: 7px; border-radius: 50%; background: var(--accent);
+  border: 1.5px solid var(--primary);
+}
+
+/* ===== HEALTH STATUS BADGES ===== */
+.health-status { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 700; padding: 3px 9px; border-radius: 20px; }
+.health-status.good { background: #dcfce7; color: #15803d; }
+.health-status.sick { background: #fee2e2; color: #dc2626; }
+.health-status.recovering { background: #fef9c3; color: #ca8a04; }
+.health-status.pregnant { background: #fce7f3; color: #be185d; }
+
+/* ===== PREGNANCY CARD ===== */
+.pregnancy-card {
+  background: linear-gradient(135deg, #fce7f3 0%, #fdf2f8 100%);
+  border: 1.5px solid #f9a8d4; border-radius: var(--radius);
+  padding: 14px 16px; margin-bottom: 10px;
+}
+.pregnancy-card .preg-title { font-size: 13px; font-weight: 800; color: #be185d; margin-bottom: 8px; }
+.preg-progress-wrap { background: #fce7f3; border-radius: 20px; height: 8px; margin: 8px 0; overflow: hidden; }
+.preg-progress-bar { height: 100%; border-radius: 20px; background: linear-gradient(90deg, #ec4899, #be185d); transition: width 0.5s; }
+.preg-stat { display: flex; justify-content: space-between; font-size: 12px; color: #9d174d; margin-top: 4px; }
+
+/* ===== DASHBOARD PREGNANCY STRIP ===== */
+.stat-card.pregnant { border-left-color: #ec4899; }
+.pregnancy-alert {
+  background: linear-gradient(135deg, #fdf2f8, #fce7f3);
+  border: 1.5px solid #f9a8d4; border-radius: var(--radius);
+  padding: 14px 16px; margin-bottom: 14px;
+}
+.pregnancy-alert-title { font-size: 13px; font-weight: 700; color: var(--text3); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 10px; }
+
+/* ===== IMPROVED FORM SECTIONS ===== */
+.form-section-title {
+  font-size: 12px; font-weight: 800; color: var(--primary); text-transform: uppercase;
+  letter-spacing: 1px; margin: 18px 0 10px; padding: 0 0 6px;
+  border-bottom: 2px solid var(--bg3);
+}
+.quick-status-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 4px; }
+.quick-status-btn {
+  padding: 10px 8px; border-radius: 10px; border: 2px solid var(--border);
+  background: var(--bg); cursor: pointer; font-size: 13px; font-weight: 700;
+  color: var(--text2); text-align: center; transition: all .15s; font-family: inherit;
+}
+.quick-status-btn.selected { border-color: var(--primary); background: var(--bg3); color: var(--primary); }
+.quick-status-btn.sel-sick { border-color: #dc2626; background: #fee2e2; color: #dc2626; }
+.quick-status-btn.sel-recovering { border-color: #ca8a04; background: #fef9c3; color: #ca8a04; }
+.quick-status-btn.sel-pregnant { border-color: #be185d; background: #fce7f3; color: #be185d; }
+
+</style>
+</head>
+<body>
+
+<div id="app">
+  <!-- HEADER -->
+  <header id="header">
+    <div class="logo-wrap" id="farmLogoWrap">
+      <span id="farmLogoIcon">🐃</span>
+      <img id="farmLogoImg" style="display:none" src="">
+    </div>
+    <h1 id="farmNameDisplay">Buffalo Manager</h1>
+    <div class="hdr-actions">
+      <button class="hdr-btn" onclick="App.openSearch()" title="Search">🔍</button>
+      <button class="hdr-btn" onclick="App.openBackupPanel()" title="Backup & Export" id="backupBtn">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+          <polyline points="7 10 12 15 17 10"/>
+          <line x1="12" y1="15" x2="12" y2="3"/>
+        </svg>
+      </button>
+      <button class="hdr-btn" onclick="App.toggleTheme()" id="themeBtn" title="Toggle theme">🌙</button>
+    </div>
+  </header>
+  <!-- SYNC STATUS BAR -->
+  <div id="syncBar" style="background:#0f4225;color:rgba(255,255,255,0.85);font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:space-between;padding:4px 14px;letter-spacing:0.3px;flex-shrink:0">
+    <span id="syncBarStatus">☁️ SheetDB — checking…</span>
+    <span id="syncBarCountdown" style="opacity:0.7"></span>
+  </div>
+
+  <!-- CONTENT -->
+  <main id="content">
+
+    <!-- DASHBOARD -->
+    <section class="screen active" id="screen-dashboard">
+      <div class="stat-grid">
+        <div class="stat-card">
+          <div class="stat-val" id="stat-total">0</div>
+          <div class="stat-lbl">🐃 Total Buffalo</div>
+        </div>
+        <div class="stat-card accent">
+          <div class="stat-val" id="stat-milk">0 L</div>
+          <div class="stat-lbl">🥛 Today's Milk</div>
+        </div>
+        <div class="stat-card pregnant">
+          <div class="stat-val" id="stat-pregnant">0</div>
+          <div class="stat-lbl">🤰 Pregnant</div>
+        </div>
+        <div class="stat-card danger">
+          <div class="stat-val" id="stat-overdue">0</div>
+          <div class="stat-lbl">⚠️ Overdue</div>
+        </div>
+      </div>
+
+      <div id="pregnancyDashboard"></div>
+
+      <div class="card">
+        <div class="card-title">7-Day Milk Production</div>
+        <div class="chart-wrap"><canvas id="milkChart"></canvas></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Upcoming Reminders</div>
+        <div id="upcomingReminders">
+          <div class="empty-state" style="padding:20px">
+            <div style="font-size:32px">🔔</div>
+            <div style="font-size:13px;color:var(--text3);margin-top:6px">No reminders yet</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Recent Records</div>
+        <div id="recentRecords">
+          <div class="empty-state" style="padding:20px">
+            <div style="font-size:32px">📋</div>
+            <div style="font-size:13px;color:var(--text3);margin-top:6px">No records yet</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- BUFFALO LIST -->
+    <section class="screen" id="screen-buffalo">
+      <div class="section-header">
+        <h2>My Buffalo</h2>
+        <span id="buffaloCount" style="font-size:13px;color:var(--text3);font-weight:700">0 animals</span>
+      </div>
+      <div class="search-bar">
+        <span class="search-ico">🔍</span>
+        <input type="text" placeholder="Search by name or tag..." id="buffaloSearch" oninput="App.filterBuffalo()">
+      </div>
+      <div id="buffaloList"></div>
+    </section>
+
+    <!-- MILK -->
+    <section class="screen" id="screen-milk">
+      <div class="section-header"><h2>Milk Records</h2></div>
+
+      <div class="tabs">
+        <div class="tab active" onclick="App.switchMilkTab('log', this)">Log Entry</div>
+        <div class="tab" onclick="App.switchMilkTab('history', this)">History</div>
+        <div class="tab" onclick="App.switchMilkTab('report', this)">Monthly</div>
+      </div>
+
+      <div id="milkTab-log">
+        <div class="card">
+          <div class="form-group">
+            <label class="form-label">Buffalo</label>
+            <select class="form-control" id="milkBuffalo">
+              <option value="">Select buffalo...</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Date</label>
+            <input type="date" class="form-control" id="milkDate">
+          </div>
+          <div class="milk-row">
+            <div class="form-group">
+              <label class="form-label">Morning (L)</label>
+              <input type="number" step="0.1" min="0" class="form-control" id="milkMorning" oninput="App.calcMilkTotal()">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Evening (L)</label>
+              <input type="number" step="0.1" min="0" class="form-control" id="milkEvening" oninput="App.calcMilkTotal()">
+            </div>
+          </div>
+          <div class="milk-total" id="milkTotalDisplay">Total: 0.0 L</div>
+          <div class="form-group">
+            <label class="form-label">Notes</label>
+            <textarea class="form-control" id="milkNotes" placeholder="Optional notes..."></textarea>
+          </div>
+          <button class="btn btn-primary" onclick="App.saveMilk()">💾 Save Milk Record</button>
+        </div>
+      </div>
+
+      <div id="milkTab-history" style="display:none">
+        <div class="card">
+          <div class="form-group">
+            <label class="form-label">Filter by Buffalo</label>
+            <select class="form-control" id="milkHistoryFilter" onchange="App.renderMilkHistory()">
+              <option value="">All Buffalo</option>
+            </select>
+          </div>
+          <div style="overflow-x:auto">
+            <table class="milk-table">
+              <thead><tr><th>Date</th><th>Buffalo</th><th>AM</th><th>PM</th><th>Total</th></tr></thead>
+              <tbody id="milkHistoryBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div id="milkTab-report" style="display:none">
+        <div class="card">
+          <div class="form-group">
+            <label class="form-label">Month</label>
+            <input type="month" class="form-control" id="milkReportMonth">
+          </div>
+          <button class="btn btn-outline" onclick="App.generateMilkReport()" style="margin-bottom:14px">📊 Generate Report</button>
+          <div id="milkReportOutput"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- HEALTH -->
+    <section class="screen" id="screen-health">
+      <div class="section-header"><h2>Health Records</h2></div>
+      <div class="tabs">
+        <div class="tab active" onclick="App.switchHealthTab('add', this)">Add Record</div>
+        <div class="tab" onclick="App.switchHealthTab('history', this)">History</div>
+      </div>
+
+      <div id="healthTab-add">
+        <div class="card">
+          <div class="form-group">
+            <label class="form-label">Buffalo</label>
+            <select class="form-control" id="healthBuffalo">
+              <option value="">Select buffalo...</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Record Type</label>
+            <select class="form-control" id="healthType">
+              <option value="vaccine">💉 Vaccination</option>
+              <option value="treatment">💊 Treatment</option>
+              <option value="vet">🩺 Vet Visit</option>
+              <option value="pregnancy">🤰 Pregnancy Check</option>
+              <option value="other">📝 Other</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Date</label>
+            <input type="date" class="form-control" id="healthDate">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Description / Notes</label>
+            <textarea class="form-control" id="healthNotes" placeholder="Describe the health record..."></textarea>
+          </div>
+          <div class="form-group">
+            <label class="form-label">🔔 Reminder Date (optional)</label>
+            <input type="date" class="form-control" id="healthReminder">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Reminder Note</label>
+            <input type="text" class="form-control" id="healthReminderNote" placeholder="e.g. Booster due">
+          </div>
+          <button class="btn btn-primary" onclick="App.saveHealth()">💾 Save Health Record</button>
+        </div>
+      </div>
+
+      <div id="healthTab-history" style="display:none">
+        <div class="form-group" style="margin-bottom:12px">
+          <select class="form-control" id="healthHistoryFilter" onchange="App.renderHealthHistory()">
+            <option value="">All Buffalo</option>
+          </select>
+        </div>
+        <div id="healthHistoryList"></div>
+      </div>
+    </section>
+
+    <!-- SETTINGS -->
+    <section class="screen" id="screen-settings">
+      <div class="section-header"><h2>Settings</h2></div>
+
+      <div class="settings-section">
+        <div class="card-title">Farm Profile</div>
+        <div class="card">
+          <div class="form-group">
+            <label class="form-label">Farm Name</label>
+            <input type="text" class="form-control" id="settingFarmName" placeholder="Enter farm name...">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Farm Logo</label>
+            <div class="photo-upload-area" onclick="document.getElementById('farmLogoInput').click()">
+              <img id="settingLogoPreview" style="display:none;width:60px;height:60px;border-radius:50%;margin:0 auto 8px;object-fit:cover">
+              <div>📷 Upload Logo</div>
+              <div style="font-size:12px;color:var(--text3);margin-top:4px">Tap to select image</div>
+              <input type="file" id="farmLogoInput" accept="image/*" style="display:none" onchange="App.handleLogoUpload(event)">
+            </div>
+          </div>
+          <button class="btn btn-primary" onclick="App.saveFarmSettings()">💾 Save Farm Settings</button>
+        </div>
+      </div>
+
+      <div class="settings-section">
+        <div class="card-title">Appearance</div>
+        <div class="card">
+          <div class="toggle-wrap" style="justify-content:space-between;margin-bottom:16px">
+            <span style="font-weight:700">Dark Mode</span>
+            <label class="toggle">
+              <input type="checkbox" id="darkModeToggle" onchange="App.toggleThemeFromToggle(this)">
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+          <div class="form-label">Theme Color</div>
+          <div class="color-row" id="colorSwatches">
+            <div class="color-swatch active" style="background:#1a6b3c" onclick="App.setThemeColor('#1a6b3c','#2d9c5a','#0f4225')" data-color="#1a6b3c"></div>
+            <div class="color-swatch" style="background:#1a5f6b" onclick="App.setThemeColor('#1a5f6b','#2d8c9c','#0f3a42')" data-color="#1a5f6b"></div>
+            <div class="color-swatch" style="background:#6b3c1a" onclick="App.setThemeColor('#6b3c1a','#9c5a2d','#422510')" data-color="#6b3c1a"></div>
+            <div class="color-swatch" style="background:#3c1a6b" onclick="App.setThemeColor('#3c1a6b','#5a2d9c','#250f42')" data-color="#3c1a6b"></div>
+            <div class="color-swatch" style="background:#1a3c6b" onclick="App.setThemeColor('#1a3c6b','#2d5a9c','#0f2542')" data-color="#1a3c6b"></div>
+            <div class="color-swatch" style="background:#6b1a3c" onclick="App.setThemeColor('#6b1a3c','#9c2d5a','#420f25')" data-color="#6b1a3c"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="settings-section">
+        <div class="card-title">Custom Fields</div>
+        <div class="card">
+          <div id="customFieldsList"></div>
+          <div class="btn-row" style="margin-top:10px">
+            <button class="btn btn-outline btn-sm" onclick="App.addCustomField()">+ Add Field</button>
+            <button class="btn btn-ghost btn-sm" onclick="App.saveCustomFields()">💾 Save Fields</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="settings-section">
+        <div class="card-title">Backup & Restore</div>
+        <div class="settings-item" onclick="App.exportExcel()">
+          <div class="s-ico">📊</div>
+          <div class="s-info"><div class="s-title">Export to Excel</div><div class="s-sub">Download all data as .xlsx</div></div>
+          <div class="s-arrow">›</div>
+        </div>
+        <div class="settings-item" onclick="document.getElementById('importFile').click()">
+          <div class="s-ico">📥</div>
+          <div class="s-info"><div class="s-title">Import from Excel</div><div class="s-sub">Restore buffalo records</div></div>
+          <div class="s-arrow">›</div>
+        </div>
+        <input type="file" id="importFile" accept=".xlsx,.xls" style="display:none" onchange="App.importExcel(event)">
+        <div class="settings-item" onclick="App.setupGoogleSheets()">
+          <div class="s-ico">☁️</div>
+          <div class="s-info"><div class="s-title">SheetDB Sync</div><div class="s-sub" id="sheetsStatus">Tap to sync with Google Sheets</div></div>
+          <div class="s-arrow">›</div>
+        </div>
+        <div class="settings-item" onclick="App.clearAllData()">
+          <div class="s-ico">🗑️</div>
+          <div class="s-info"><div class="s-title" style="color:var(--danger)">Clear All Data</div><div class="s-sub">Remove all records permanently</div></div>
+          <div class="s-arrow">›</div>
+        </div>
+      </div>
+
+      <div class="settings-section">
+        <div class="card-title">About</div>
+        <div class="card" style="text-align:center;color:var(--text3);font-size:13px">
+          <div style="font-size:36px;margin-bottom:8px">🐃</div>
+          <div style="font-weight:800;font-size:16px;color:var(--text)">Buffalo Manager</div>
+          <div style="margin-top:4px">v1.0 · Offline-capable PWA</div>
+          <div style="margin-top:2px">Built for farmers</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- FARM HELP -->
+    <section class="screen" id="screen-help">
+      <div class="section-header"><h2>Farm Help</h2></div>
+      <div class="card" style="margin-bottom:14px">
+        <div class="form-label">Search for buffalo farming tips, diseases, feed, etc.</div>
+        <div style="display:flex;gap:8px;margin-top:8px">
+          <input type="text" class="form-control" id="helpSearchInput" placeholder="e.g. buffalo mastitis treatment" style="flex:1" onkeydown="if(event.key==='Enter')App.searchHelp()">
+          <button class="btn btn-primary" style="width:auto;padding:12px 16px" onclick="App.searchHelp()">🔍</button>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">
+        <button class="btn btn-ghost btn-sm" onclick="App.quickSearch('buffalo feeding tips')">🌾 Feeding</button>
+        <button class="btn btn-ghost btn-sm" onclick="App.quickSearch('buffalo diseases symptoms')">🦠 Diseases</button>
+        <button class="btn btn-ghost btn-sm" onclick="App.quickSearch('buffalo milk production increase')">🥛 Milk</button>
+        <button class="btn btn-ghost btn-sm" onclick="App.quickSearch('buffalo vaccination schedule')">💉 Vaccines</button>
+        <button class="btn btn-ghost btn-sm" onclick="App.quickSearch('buffalo breeding tips')">🐃 Breeding</button>
+      </div>
+      <div id="helpResults">
+        <div class="empty-state">
+          <div class="empty-ico">🌿</div>
+          <div class="empty-title">Search for Help</div>
+          <div class="empty-sub">Find tips on buffalo care, diseases, milk production, and more</div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- BOTTOM NAV -->
+  <nav id="nav">
+    <div class="nav-item active" onclick="App.navigate('dashboard', this)">
+      <span class="nav-ico">🏠</span><span>Home</span>
+    </div>
+    <div class="nav-item" onclick="App.navigate('buffalo', this)">
+      <span class="nav-ico">🐃</span><span>Buffalo</span>
+    </div>
+    <div class="nav-item" onclick="App.navigate('milk', this)">
+      <span class="nav-ico">🥛</span><span>Milk</span>
+    </div>
+    <div class="nav-item" onclick="App.navigate('health', this)">
+      <span class="nav-ico">❤️</span><span>Health</span>
+    </div>
+    <div class="nav-item" onclick="App.navigate('settings', this)">
+      <span class="nav-ico">⚙️</span><span>Settings</span>
+    </div>
+  </nav>
+
+  <!-- FAB -->
+  <button class="fab" id="fab" onclick="App.fabAction()">+</button>
+</div>
+
+<!-- TOAST -->
+<div id="toast"></div>
+
+<!-- ===== MODALS ===== -->
+
+<!-- Buffalo Form Modal -->
+<div class="modal-overlay" id="modalBuffalo">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title" id="buffaloModalTitle">Add Buffalo</span>
+      <button class="modal-close" onclick="App.closeModal('modalBuffalo')">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="buffaloId">
+
+      <div class="form-group">
+        <label class="form-label">Buffalo ID / Tag Number</label>
+        <input type="text" class="form-control" id="bTag" placeholder="e.g. BUF-001">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Name</label>
+        <input type="text" class="form-control" id="bName" placeholder="e.g. Lakshmi">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Breed</label>
+        <select class="form-control" id="bBreed">
+          <option value="">Select breed...</option>
+          <option>Murrah</option>
+          <option>Surti</option>
+          <option>Jaffarabadi</option>
+          <option>Mehsana</option>
+          <option>Nili-Ravi</option>
+          <option>Banni</option>
+          <option>Toda</option>
+          <option>Other</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Gender</label>
+        <select class="form-control" id="bGender">
+          <option value="">Select...</option>
+          <option value="female">Female</option>
+          <option value="male">Male</option>
+          <option value="calf-f">Calf (Female)</option>
+          <option value="calf-m">Calf (Male)</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Date of Birth</label>
+        <input type="date" class="form-control" id="bDob">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Weight (kg)</label>
+        <input type="number" class="form-control" id="bWeight" placeholder="Weight in kg">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Notes</label>
+        <textarea class="form-control" id="bNotes" placeholder="Any additional notes..."></textarea>
+      </div>
+      <div class="form-section-title">🩺 Health &amp; Pregnancy</div>
+      <div class="form-group">
+        <label class="form-label">Health Status</label>
+        <div class="quick-status-grid" id="healthStatusBtns">
+          <button type="button" class="quick-status-btn selected" data-status="good" onclick="App.selectHealthStatus('good')">✅ Good</button>
+          <button type="button" class="quick-status-btn" data-status="sick" onclick="App.selectHealthStatus('sick')">🤒 Sick</button>
+          <button type="button" class="quick-status-btn" data-status="recovering" onclick="App.selectHealthStatus('recovering')">💊 Recovering</button>
+          <button type="button" class="quick-status-btn" data-status="pregnant" onclick="App.selectHealthStatus('pregnant')">🤰 Pregnant</button>
+        </div>
+        <input type="hidden" id="bHealthStatus" value="good">
+      </div>
+      <div id="pregnancyFields" style="display:none">
+        <div class="form-group">
+          <label class="form-label">📅 Conception / Mating Date</label>
+          <input type="date" class="form-control" id="bConceptionDate" oninput="App.calcDeliveryDate()">
+        </div>
+        <div id="deliveryCalcResult" style="display:none;background:linear-gradient(135deg,#fce7f3,#fdf2f8);border:1.5px solid #f9a8d4;border-radius:10px;padding:12px 14px;margin-top:-8px;margin-bottom:4px">
+          <div style="font-size:12px;font-weight:700;color:#be185d;margin-bottom:4px">🗓️ Estimated Delivery Date</div>
+          <div id="deliveryDateDisplay" style="font-size:20px;font-weight:900;color:#be185d"></div>
+          <div id="deliveryDaysLeft" style="font-size:12px;color:#9d174d;margin-top:2px"></div>
+          <div style="margin-top:8px">
+            <div class="preg-progress-wrap"><div class="preg-progress-bar" id="pregProgressBar" style="width:0%"></div></div>
+            <div class="preg-stat"><span id="pregDaysIn">0 days in</span><span>310 days total</span></div>
+          </div>
+        </div>
+      </div>
+      <div id="customFieldsForm"></div>
+      <div class="btn-row">
+        <button class="btn btn-primary" onclick="App.saveBuffalo()">💾 Save</button>
+        <button class="btn btn-ghost" onclick="App.closeModal('modalBuffalo')">Cancel</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Buffalo Detail Modal -->
+<div class="modal-overlay" id="modalDetail">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title">Buffalo Details</span>
+      <button class="modal-close" onclick="App.closeModal('modalDetail')">✕</button>
+    </div>
+    <div class="modal-body" id="modalDetailBody"></div>
+  </div>
+</div>
+
+<!-- SheetDB Sync Modal -->
+<div class="modal-overlay" id="modalSheets">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title">☁️ SheetDB Sync</span>
+      <button class="modal-close" onclick="App.closeModal('modalSheets')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div id="sheetdbStatusBox" style="border-radius:var(--radius-sm);padding:14px;margin-bottom:16px;font-size:13px;text-align:center">
+        <div id="sheetdbStatusIcon" style="font-size:32px;margin-bottom:6px">☁️</div>
+        <div id="sheetdbStatusText" style="font-weight:700">Checking connection…</div>
+        <div id="sheetdbStatusSub" style="font-size:12px;color:var(--text3);margin-top:2px"></div>
+      </div>
+      <div class="btn-row" style="margin-bottom:10px">
+        <button class="btn btn-primary" onclick="App.sheetdbPushAll()">⬆️ Push All to Sheet</button>
+        <button class="btn btn-outline" onclick="App.sheetdbPullAll()">⬇️ Pull from Sheet</button>
+      </div>
+      <button class="btn btn-ghost" style="width:100%" onclick="App.sheetdbTestConnection()">🔄 Test Connection</button>
+      <div id="sheetdbSyncLog" style="margin-top:14px;font-size:12px;color:var(--text3);max-height:160px;overflow-y:auto"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Backup Panel Modal -->
+<div class="modal-overlay" id="modalBackup">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title">🗂️ Backup &amp; Restore</span>
+      <button class="modal-close" onclick="App.closeModal('modalBackup')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div id="backupStats" style="display:flex;gap:10px;margin-bottom:18px"></div>
+
+      <div class="card-title" style="margin-bottom:10px">Export / Download</div>
+
+      <div class="backup-option" onclick="App.exportExcel()">
+        <div class="backup-ico" style="background:#e8f5e9">📊</div>
+        <div class="backup-info">
+          <div class="backup-title">Export to Excel (.xlsx)</div>
+          <div class="backup-sub">All buffalo, milk &amp; health records</div>
+        </div>
+        <div class="backup-arrow">›</div>
+      </div>
+
+      <div class="backup-option" onclick="App.exportJSON()">
+        <div class="backup-ico" style="background:#e3f2fd">📄</div>
+        <div class="backup-info">
+          <div class="backup-title">Export Full Backup (.json)</div>
+          <div class="backup-sub">Complete data snapshot for restore</div>
+        </div>
+        <div class="backup-arrow">›</div>
+      </div>
+
+      <div class="backup-option" onclick="App.setupGoogleSheets();App.closeModal('modalBackup')">
+        <div class="backup-ico" style="background:#f3e5f5">☁️</div>
+        <div class="backup-info">
+          <div class="backup-title">SheetDB Sync</div>
+          <div class="backup-sub" id="backupSheetsStatus">Push &amp; pull data to Google Sheets</div>
+        </div>
+        <div class="backup-arrow">›</div>
+      </div>
+
+      <div class="card-title" style="margin:18px 0 10px">Restore / Import</div>
+
+      <div class="backup-option" onclick="document.getElementById('importFile2').click()">
+        <div class="backup-ico" style="background:#fff8e1">📥</div>
+        <div class="backup-info">
+          <div class="backup-title">Import from Excel</div>
+          <div class="backup-sub">Restore buffalo records from .xlsx</div>
+        </div>
+        <div class="backup-arrow">›</div>
+      </div>
+      <input type="file" id="importFile2" accept=".xlsx,.xls" style="display:none" onchange="App.importExcel(event);App.closeModal('modalBackup')">
+
+      <div class="backup-option" onclick="document.getElementById('importJSON').click()">
+        <div class="backup-ico" style="background:#e8f5e9">📤</div>
+        <div class="backup-info">
+          <div class="backup-title">Restore from JSON Backup</div>
+          <div class="backup-sub">Load a previously saved .json file</div>
+        </div>
+        <div class="backup-arrow">›</div>
+      </div>
+      <input type="file" id="importJSON" accept=".json" style="display:none" onchange="App.importJSON(event)">
+
+      <div id="lastBackupInfo" style="text-align:center;font-size:12px;color:var(--text3);margin-top:18px;padding-top:14px;border-top:1px solid var(--border)">
+        Last backup: Never
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Search Modal -->
+<div class="modal-overlay" id="modalSearch">
+  <div class="modal" style="border-radius:24px 24px 0 0">
+    <div class="modal-header">
+      <span class="modal-title">🔍 Global Search</span>
+      <button class="modal-close" onclick="App.closeModal('modalSearch')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="search-bar" style="margin-bottom:16px">
+        <span class="search-ico">🔍</span>
+        <input type="text" placeholder="Search buffalo, health, milk..." id="globalSearch" oninput="App.globalSearch()" autofocus>
+      </div>
+      <div id="globalSearchResults"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+// =============================================
+// DATABASE (IndexedDB)
+// =============================================
+const DB = {
+  db: null,
+  async open() {
+    return new Promise((res, rej) => {
+      const req = indexedDB.open('BuffaloManagerDB', 2);
+      req.onupgradeneeded = e => {
+        const db = e.target.result;
+        if (!db.objectStoreNames.contains('buffalo')) db.createObjectStore('buffalo', { keyPath: 'id' });
+        if (!db.objectStoreNames.contains('milk')) db.createObjectStore('milk', { keyPath: 'id' });
+        if (!db.objectStoreNames.contains('health')) db.createObjectStore('health', { keyPath: 'id' });
+        if (!db.objectStoreNames.contains('settings')) db.createObjectStore('settings', { keyPath: 'key' });
+      };
+      req.onsuccess = e => { this.db = e.target.result; res(); };
+      req.onerror = () => rej(req.error);
+    });
+  },
+  async get(store, key) {
+    return new Promise((res, rej) => {
+      const tx = this.db.transaction(store, 'readonly');
+      const req = tx.objectStore(store).get(key);
+      req.onsuccess = () => res(req.result);
+      req.onerror = () => rej(req.error);
+    });
+  },
+  async getAll(store) {
+    return new Promise((res, rej) => {
+      const tx = this.db.transaction(store, 'readonly');
+      const req = tx.objectStore(store).getAll();
+      req.onsuccess = () => res(req.result || []);
+      req.onerror = () => rej(req.error);
+    });
+  },
+  async put(store, data) {
+    return new Promise((res, rej) => {
+      const tx = this.db.transaction(store, 'readwrite');
+      const req = tx.objectStore(store).put(data);
+      req.onsuccess = () => res(req.result);
+      req.onerror = () => rej(req.error);
+    });
+  },
+  async delete(store, key) {
+    return new Promise((res, rej) => {
+      const tx = this.db.transaction(store, 'readwrite');
+      const req = tx.objectStore(store).delete(key);
+      req.onsuccess = () => res();
+      req.onerror = () => rej(req.error);
+    });
+  },
+  async clear(store) {
+    return new Promise((res, rej) => {
+      const tx = this.db.transaction(store, 'readwrite');
+      const req = tx.objectStore(store).clear();
+      req.onsuccess = () => res();
+      req.onerror = () => rej(req.error);
+    });
+  }
+};
+
+// =============================================
+// MAIN APP
+// =============================================
+const App = {
+  currentScreen: 'dashboard',
+  customFields: [],
+  settings: {},
+  milkChart: null,
+
+  async init() {
+    await DB.open();
+    await this.loadSettings();
+    this.applySettings();
+    this.initDefaults();
+    this.renderDashboard();
+    this.renderBuffaloList();
+    this.initMilkForm();
+    this.initHealthForm();
+    this.renderCustomFields();
+    this.updateBackupBtnState();
+    // Start auto-sync to SheetDB every 60 seconds
+    this._startAutoSync();
+  },
+
+  _syncCountdown: 60,
+  _syncTimer: null,
+  _countdownTimer: null,
+
+  _startAutoSync() {
+    // Immediate first sync
+    this._doAutoSync();
+    // Every 60s push all data
+    this._syncTimer = setInterval(() => this._doAutoSync(), 60000);
+    // Countdown ticker every second
+    this._countdownTimer = setInterval(() => {
+      this._syncCountdown--;
+      if (this._syncCountdown <= 0) this._syncCountdown = 60;
+      const el = document.getElementById('syncBarCountdown');
+      if (el) el.textContent = `next sync in ${this._syncCountdown}s`;
+    }, 1000);
+  },
+
+  async _doAutoSync() {
+    this._syncCountdown = 60;
+    this._setSyncBar('syncing');
+    try {
+      await this._sheetdbPushAll_silent();
+      this._setSyncBar('ok');
+    } catch(e) {
+      this._setSyncBar('error', e.message);
+    }
+  },
+
+  _setSyncBar(state, msg) {
+    const bar = document.getElementById('syncBar');
+    const status = document.getElementById('syncBarStatus');
+    if (!bar || !status) return;
+    if (state === 'syncing') {
+      bar.style.background = '#1a5f3c';
+      status.textContent = '⏳ Syncing to SheetDB…';
+    } else if (state === 'ok') {
+      bar.style.background = '#0f4225';
+      const now = new Date().toLocaleTimeString('en-IN', { hour:'2-digit', minute:'2-digit', second:'2-digit' });
+      status.textContent = `✅ Synced — ${now}`;
+      document.getElementById('sheetsStatus') && (document.getElementById('sheetsStatus').textContent = '✅ SheetDB live');
+    } else if (state === 'error') {
+      bar.style.background = '#7f1d1d';
+      status.textContent = `❌ Sync failed — ${msg || 'check connection'}`;
+    }
+  },
+
+  async _sheetdbAutoCheck() {
+    // Kept for compat — auto sync handles this now
+  },
+
+  initDefaults() {
+    // Set today's date on forms
+    const today = new Date().toISOString().split('T')[0];
+    const el = id => document.getElementById(id);
+    el('milkDate').value = today;
+    el('healthDate').value = today;
+    const now = new Date();
+    el('milkReportMonth').value = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+  },
+
+  // ===== NAVIGATION =====
+  navigate(screen, navEl) {
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    document.getElementById('screen-' + screen).classList.add('active');
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    if (navEl) navEl.classList.add('active');
+    this.currentScreen = screen;
+
+    // FAB visibility
+    const fab = document.getElementById('fab');
+    fab.classList.toggle('hidden', screen !== 'buffalo');
+
+    // Refresh data per screen
+    if (screen === 'dashboard') this.renderDashboard();
+    if (screen === 'buffalo') this.renderBuffaloList();
+    if (screen === 'milk') { this.populateBuffaloSelects(); this.renderMilkHistory(); }
+    if (screen === 'health') { this.populateBuffaloSelects(); this.renderHealthHistory(); }
+  },
+
+  fabAction() {
+    if (this.currentScreen === 'buffalo') this.openBuffaloForm();
+  },
+
+  // ===== SETTINGS =====
+  async loadSettings() {
+    const keys = ['farmName','farmLogo','darkMode','themeColor','themeColorLight','themeColorDark','customFields','sheetsUrl','sheetsId'];
+    this.settings = {};
+    for (const k of keys) {
+      const row = await DB.get('settings', k);
+      if (row) this.settings[k] = row.value;
+    }
+    this.customFields = this.settings.customFields || [];
+  },
+
+  applySettings() {
+    if (this.settings.farmName) {
+      document.getElementById('farmNameDisplay').textContent = this.settings.farmName;
+      document.getElementById('settingFarmName').value = this.settings.farmName;
+    }
+    if (this.settings.farmLogo) {
+      this.showFarmLogo(this.settings.farmLogo);
+      const prev = document.getElementById('settingLogoPreview');
+      prev.src = this.settings.farmLogo; prev.style.display = 'block';
+    }
+    if (this.settings.darkMode) {
+      document.documentElement.setAttribute('data-theme', 'dark');
+      document.getElementById('darkModeToggle').checked = true;
+      document.getElementById('themeBtn').textContent = '☀️';
+    }
+    if (this.settings.themeColor) {
+      this.setThemeColor(this.settings.themeColor, this.settings.themeColorLight, this.settings.themeColorDark, true);
+    }
+    if (this.settings.sheetsUrl) {
+      document.getElementById('sheetsUrl') && (document.getElementById('sheetsUrl').value = this.settings.sheetsUrl);
+      document.getElementById('sheetsId') && (document.getElementById('sheetsId').value = this.settings.sheetsId || '');
+    }
+    // SheetDB is always configured
+    document.getElementById('sheetsStatus') && (document.getElementById('sheetsStatus').textContent = '☁️ SheetDB connected');
+  },
+
+  showFarmLogo(src) {
+    const icon = document.getElementById('farmLogoIcon');
+    const img = document.getElementById('farmLogoImg');
+    icon.style.display = 'none';
+    img.src = src; img.style.display = 'block';
+  },
+
+  async saveSetting(key, value) {
+    await DB.put('settings', { key, value });
+    this.settings[key] = value;
+  },
+
+  async saveFarmSettings() {
+    const name = document.getElementById('settingFarmName').value.trim();
+    if (name) {
+      await this.saveSetting('farmName', name);
+      document.getElementById('farmNameDisplay').textContent = name;
+    }
+    this.toast('✅ Farm settings saved');
+  },
+
+  handleLogoUpload(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = async ev => {
+      const data = ev.target.result;
+      await this.saveSetting('farmLogo', data);
+      this.showFarmLogo(data);
+      const prev = document.getElementById('settingLogoPreview');
+      prev.src = data; prev.style.display = 'block';
+      this.toast('✅ Logo updated');
+    };
+    reader.readAsDataURL(file);
+  },
+
+  toggleTheme() {
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+    document.documentElement.setAttribute('data-theme', isDark ? 'light' : 'dark');
+    document.getElementById('themeBtn').textContent = isDark ? '🌙' : '☀️';
+    document.getElementById('darkModeToggle').checked = !isDark;
+    this.saveSetting('darkMode', !isDark);
+    setTimeout(() => this.renderDashboard(), 100);
+  },
+
+  toggleThemeFromToggle(el) {
+    const isDark = el.checked;
+    document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
+    document.getElementById('themeBtn').textContent = isDark ? '☀️' : '🌙';
+    this.saveSetting('darkMode', isDark);
+    setTimeout(() => this.renderDashboard(), 100);
+  },
+
+  setThemeColor(primary, light, dark, silent) {
+    document.documentElement.style.setProperty('--primary', primary);
+    document.documentElement.style.setProperty('--primary-light', light || primary);
+    document.documentElement.style.setProperty('--primary-dark', dark || primary);
+    document.querySelectorAll('.color-swatch').forEach(s => s.classList.toggle('active', s.dataset.color === primary));
+    if (!silent) {
+      this.saveSetting('themeColor', primary);
+      this.saveSetting('themeColorLight', light);
+      this.saveSetting('themeColorDark', dark);
+    }
+  },
+
+  // ===== CUSTOM FIELDS =====
+  renderCustomFields() {
+    const list = document.getElementById('customFieldsList');
+    list.innerHTML = this.customFields.map((f, i) => `
+      <div class="custom-field-row">
+        <input type="text" class="form-control" value="${f}" oninput="App.customFields[${i}]=this.value" placeholder="Field name">
+        <button class="btn btn-danger btn-sm" onclick="App.removeCustomField(${i})">✕</button>
+      </div>
+    `).join('') || '<div style="color:var(--text3);font-size:13px;margin-bottom:10px">No custom fields added</div>';
+  },
+
+  addCustomField() {
+    this.customFields.push('');
+    this.renderCustomFields();
+  },
+
+  removeCustomField(i) {
+    this.customFields.splice(i, 1);
+    this.renderCustomFields();
+  },
+
+  async saveCustomFields() {
+    this.customFields = this.customFields.filter(f => f.trim());
+    await this.saveSetting('customFields', this.customFields);
+    this.renderCustomFields();
+    this.toast('✅ Custom fields saved');
+  },
+
+  // ===== BUFFALO FORM =====
+  openBuffaloForm(buffalo) {
+    const modal = document.getElementById('modalBuffalo');
+    document.getElementById('buffaloModalTitle').textContent = buffalo ? 'Edit Buffalo' : 'Add Buffalo';
+    document.getElementById('buffaloId').value = buffalo ? buffalo.id : '';
+    document.getElementById('bTag').value = buffalo?.tag || '';
+    document.getElementById('bName').value = buffalo?.name || '';
+    document.getElementById('bBreed').value = buffalo?.breed || '';
+    document.getElementById('bGender').value = buffalo?.gender || '';
+    document.getElementById('bDob').value = buffalo?.dob || '';
+    document.getElementById('bWeight').value = buffalo?.weight || '';
+    document.getElementById('bNotes').value = buffalo?.notes || '';
+
+    // Health status
+    const status = buffalo?.healthStatus || 'good';
+    document.getElementById('bHealthStatus').value = status;
+    this.selectHealthStatus(status);
+    document.getElementById('bConceptionDate').value = buffalo?.conceptionDate || '';
+    this.calcDeliveryDate();
+
+    // Custom fields
+    const cf = document.getElementById('customFieldsForm');
+    cf.innerHTML = this.customFields.map(f => `
+      <div class="form-group">
+        <label class="form-label">${f}</label>
+        <input type="text" class="form-control" data-custom="${f}" value="${buffalo?.custom?.[f] || ''}">
+      </div>
+    `).join('');
+
+    modal.classList.add('open');
+  },
+
+  selectHealthStatus(status) {
+    document.getElementById('bHealthStatus').value = status;
+    document.querySelectorAll('#healthStatusBtns .quick-status-btn').forEach(btn => {
+      btn.className = 'quick-status-btn';
+      if (btn.dataset.status === status) {
+        btn.classList.add(status === 'good' ? 'selected' : `sel-${status}`);
+      }
+    });
+    const pregFields = document.getElementById('pregnancyFields');
+    pregFields.style.display = status === 'pregnant' ? 'block' : 'none';
+    if (status === 'pregnant') this.calcDeliveryDate();
+  },
+
+  calcDeliveryDate() {
+    const conception = document.getElementById('bConceptionDate').value;
+    const result = document.getElementById('deliveryCalcResult');
+    if (!conception) { result.style.display = 'none'; return; }
+    const GESTATION = 310; // days for buffalo
+    const concDate = new Date(conception);
+    const deliveryDate = new Date(concDate.getTime() + GESTATION * 24 * 60 * 60 * 1000);
+    const today = new Date();
+    const daysIn = Math.floor((today - concDate) / (24 * 60 * 60 * 1000));
+    const daysLeft = Math.floor((deliveryDate - today) / (24 * 60 * 60 * 1000));
+    const progress = Math.min(100, Math.max(0, Math.round((daysIn / GESTATION) * 100)));
+    result.style.display = 'block';
+    document.getElementById('deliveryDateDisplay').textContent = deliveryDate.toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' });
+    document.getElementById('deliveryDaysLeft').textContent = daysLeft > 0 ? `${daysLeft} days remaining` : daysLeft === 0 ? '🎉 Due today!' : `${Math.abs(daysLeft)} days overdue`;
+    document.getElementById('pregProgressBar').style.width = progress + '%';
+    document.getElementById('pregDaysIn').textContent = `${Math.max(0,daysIn)} days in`;
+  },
+
+  calcDeliveryDateFromConception(conceptionDate) {
+    if (!conceptionDate) return null;
+    const GESTATION = 310;
+    const d = new Date(conceptionDate);
+    d.setDate(d.getDate() + GESTATION);
+    return d;
+  },
+
+  closeModal(id) {
+    document.getElementById(id).classList.remove('open');
+  },
+
+  async saveBuffalo() {
+    const id = document.getElementById('buffaloId').value || Date.now().toString();
+    const custom = {};
+    document.querySelectorAll('[data-custom]').forEach(el => { custom[el.dataset.custom] = el.value; });
+
+    const buffalo = {
+      id,
+      tag: document.getElementById('bTag').value,
+      name: document.getElementById('bName').value,
+      breed: document.getElementById('bBreed').value,
+      gender: document.getElementById('bGender').value,
+      dob: document.getElementById('bDob').value,
+      weight: document.getElementById('bWeight').value,
+      notes: document.getElementById('bNotes').value,
+      healthStatus: document.getElementById('bHealthStatus').value || 'good',
+      conceptionDate: document.getElementById('bConceptionDate').value || '',
+      custom,
+      createdAt: new Date().toISOString()
+    };
+
+    await DB.put('buffalo', buffalo);
+    this.closeModal('modalBuffalo');
+    this.renderBuffaloList();
+    this.renderDashboard();
+    this.toast('✅ Buffalo saved!');
+    this.syncToSheets();
+    this.updateBackupBtnState();
+  },
+
+  // ===== BUFFALO LIST =====
+  async renderBuffaloList() {
+    const all = await DB.getAll('buffalo');
+    const search = document.getElementById('buffaloSearch')?.value?.toLowerCase() || '';
+    const filtered = search ? all.filter(b => (b.name + b.tag).toLowerCase().includes(search)) : all;
+    document.getElementById('buffaloCount').textContent = `${all.length} animal${all.length !== 1 ? 's' : ''}`;
+
+    const list = document.getElementById('buffaloList');
+    if (!filtered.length) {
+      list.innerHTML = `<div class="empty-state"><div class="empty-ico">🐃</div><div class="empty-title">${search ? 'No results found' : 'No buffalo added yet'}</div><div class="empty-sub">${search ? 'Try a different search' : 'Tap + to add your first buffalo'}</div></div>`;
+      return;
+    }
+    list.innerHTML = filtered.map(b => {
+      const age = b.dob ? this.calcAge(b.dob) : '';
+      const genderClass = b.gender?.includes('female') ? 'female' : (b.gender?.includes('male') ? 'male' : '');
+      const genderLabel = b.gender ? b.gender.charAt(0).toUpperCase() + b.gender.slice(1) : '';
+      const status = b.healthStatus || 'good';
+      const statusLabels = { good: '✅ Healthy', sick: '🤒 Sick', recovering: '💊 Recovering', pregnant: '🤰 Pregnant' };
+      const statusHTML = `<span class="health-status ${status}">${statusLabels[status]||status}</span>`;
+      let pregnancyBadge = '';
+      if (status === 'pregnant' && b.conceptionDate) {
+        const delivery = this.calcDeliveryDateFromConception(b.conceptionDate);
+        if (delivery) {
+          const daysLeft = Math.floor((delivery - new Date()) / (24*60*60*1000));
+          pregnancyBadge = `<span class="badge" style="background:#fce7f3;color:#be185d">${daysLeft > 0 ? `🗓️ ${daysLeft}d left` : daysLeft === 0 ? '🎉 Due today' : '⚠️ Overdue'}</span>`;
+        }
+      }
+      return `
+        <div class="buffalo-card" onclick="App.viewBuffalo('${b.id}')">
+          <div class="buffalo-avatar">
+            '🐃'
+          </div>
+          <div class="buffalo-info">
+            <div class="buffalo-name">${b.name || b.tag || 'Unnamed'}</div>
+            <div class="buffalo-sub">${[b.tag, b.breed, age].filter(Boolean).join(' · ')}</div>
+            <div class="buffalo-tags">
+              ${genderLabel ? `<span class="badge ${genderClass}">${genderLabel}</span>` : ''}
+              ${statusHTML}
+              ${b.weight ? `<span class="badge">⚖️ ${b.weight}kg</span>` : ''}
+              ${pregnancyBadge}
+            </div>
+          </div>
+        </div>
+      `;
+    }).join('');
+  },
+
+  filterBuffalo() { this.renderBuffaloList(); },
+
+  calcAge(dob) {
+    const d = new Date(dob);
+    const now = new Date();
+    const months = (now.getFullYear() - d.getFullYear()) * 12 + (now.getMonth() - d.getMonth());
+    if (months < 1) return '< 1 month';
+    if (months < 24) return `${months} months`;
+    return `${Math.floor(months/12)} yrs`;
+  },
+
+  async viewBuffalo(id) {
+    const b = await DB.get('buffalo', id);
+    if (!b) return;
+    const health = (await DB.getAll('health')).filter(h => h.buffaloId === id);
+    const milk = (await DB.getAll('milk')).filter(m => m.buffaloId === id);
+    const totalMilk = milk.reduce((s, m) => s + (parseFloat(m.total) || 0), 0);
+    const age = b.dob ? this.calcAge(b.dob) : 'Unknown';
+    const status = b.healthStatus || 'good';
+    const statusLabels = { good: '✅ Healthy', sick: '🤒 Sick', recovering: '💊 Recovering', pregnant: '🤰 Pregnant' };
+
+    // Pregnancy block
+    let pregnancyBlock = '';
+    if (status === 'pregnant' && b.conceptionDate) {
+      const GESTATION = 310;
+      const concDate = new Date(b.conceptionDate);
+      const deliveryDate = this.calcDeliveryDateFromConception(b.conceptionDate);
+      const today = new Date();
+      const daysIn = Math.max(0, Math.floor((today - concDate) / (24*60*60*1000)));
+      const daysLeft = Math.floor((deliveryDate - today) / (24*60*60*1000));
+      const progress = Math.min(100, Math.max(0, Math.round((daysIn / GESTATION) * 100)));
+      pregnancyBlock = `
+        <div class="pregnancy-card" style="margin-bottom:14px">
+          <div class="preg-title">🤰 Pregnancy Tracker</div>
+          <div style="display:flex;justify-content:space-between;align-items:baseline">
+            <div>
+              <div style="font-size:11px;color:#9d174d;font-weight:700">ESTIMATED DELIVERY</div>
+              <div style="font-size:18px;font-weight:900;color:#be185d">${deliveryDate.toLocaleDateString('en-IN',{day:'numeric',month:'long',year:'numeric'})}</div>
+            </div>
+            <div style="text-align:right">
+              <div style="font-size:22px;font-weight:900;color:#be185d">${daysLeft > 0 ? daysLeft : 0}</div>
+              <div style="font-size:11px;color:#9d174d;font-weight:700">${daysLeft > 0 ? 'DAYS LEFT' : daysLeft === 0 ? '🎉 DUE TODAY' : '⚠️ OVERDUE'}</div>
+            </div>
+          </div>
+          <div class="preg-progress-wrap" style="margin:10px 0 4px">
+            <div class="preg-progress-bar" style="width:${progress}%"></div>
+          </div>
+          <div class="preg-stat"><span>${daysIn} days in</span><span>${progress}% complete</span><span>310 days total</span></div>
+        </div>
+      `;
+    }
+
+    document.getElementById('modalDetailBody').innerHTML = `
+      <div class="detail-hero">
+        <div class="detail-avatar">
+          '🐃'
+        </div>
+        <div>
+          <div class="detail-name">${b.name || b.tag || 'Unnamed'}</div>
+          <div class="detail-sub">${b.breed || 'Unknown breed'}</div>
+          <div class="detail-badges">
+            ${b.gender ? `<span class="detail-badge">${b.gender}</span>` : ''}
+            ${b.tag ? `<span class="detail-badge">#${b.tag}</span>` : ''}
+            <span class="detail-badge">${statusLabels[status]||status}</span>
+          </div>
+        </div>
+      </div>
+
+      ${pregnancyBlock}
+
+      <div class="info-grid" style="margin-bottom:16px">
+        <div class="info-item"><div class="info-item-label">Age</div><div class="info-item-val">${age}</div></div>
+        <div class="info-item"><div class="info-item-label">Weight</div><div class="info-item-val">${b.weight ? b.weight+'kg' : '—'}</div></div>
+        <div class="info-item"><div class="info-item-label">Milk Records</div><div class="info-item-val">${milk.length}</div></div>
+        <div class="info-item"><div class="info-item-label">Total Milk</div><div class="info-item-val">${totalMilk.toFixed(1)}L</div></div>
+        ${b.notes ? `<div class="info-item full"><div class="info-item-label">Notes</div><div class="info-item-val" style="font-size:13px;font-weight:600">${b.notes}</div></div>` : ''}
+        ${Object.entries(b.custom||{}).filter(([k,v])=>v).map(([k,v])=>`<div class="info-item"><div class="info-item-label">${k}</div><div class="info-item-val">${v}</div></div>`).join('')}
+      </div>
+
+      <div class="card-title">Recent Health Records</div>
+      ${health.length ? health.slice(-3).map(h => `
+        <div class="health-item ${h.type}">
+          <div style="font-weight:700">${{vaccine:'💉 Vaccination',treatment:'💊 Treatment',vet:'🩺 Vet Visit',pregnancy:'🤰 Pregnancy Check',other:'📝 Note'}[h.type]||h.type}</div>
+          <div class="health-meta">${h.date} ${h.notes ? '· '+h.notes : ''}</div>
+          ${h.reminder ? `<div class="health-meta">🔔 Reminder: ${h.reminder}</div>` : ''}
+        </div>
+      `).join('') : '<div style="color:var(--text3);font-size:13px;margin-bottom:16px">No health records</div>'}
+
+      <div class="btn-row" style="margin-top:16px">
+        <button class="btn btn-primary btn-sm" onclick="App.closeModal('modalDetail');App.openBuffaloForm(${JSON.stringify(b).replace(/"/g,'&quot;')})">✏️ Edit</button>
+        <button class="btn btn-danger btn-sm" onclick="App.deleteBuffalo('${b.id}')">🗑️ Delete</button>
+      </div>
+    `;
+    document.getElementById('modalDetail').classList.add('open');
+  },
+
+  async deleteBuffalo(id) {
+    if (!confirm('Delete this buffalo and all its records?')) return;
+    await DB.delete('buffalo', id);
+    const milkAll = await DB.getAll('milk');
+    for (const m of milkAll.filter(m => m.buffaloId === id)) await DB.delete('milk', m.id);
+    const healthAll = await DB.getAll('health');
+    for (const h of healthAll.filter(h => h.buffaloId === id)) await DB.delete('health', h.id);
+    this.closeModal('modalDetail');
+    this.renderBuffaloList();
+    this.renderDashboard();
+    this.toast('🗑️ Buffalo deleted');
+  },
+
+  // ===== MILK =====
+  calcMilkTotal() {
+    const am = parseFloat(document.getElementById('milkMorning').value) || 0;
+    const pm = parseFloat(document.getElementById('milkEvening').value) || 0;
+    document.getElementById('milkTotalDisplay').textContent = `Total: ${(am + pm).toFixed(1)} L`;
+  },
+
+  async saveMilk() {
+    const buffaloId = document.getElementById('milkBuffalo').value;
+    const date = document.getElementById('milkDate').value;
+    if (!date) { this.toast('⚠️ Please enter a date'); return; }
+    const morning = parseFloat(document.getElementById('milkMorning').value) || 0;
+    const evening = parseFloat(document.getElementById('milkEvening').value) || 0;
+    const record = {
+      id: Date.now().toString(),
+      buffaloId, date,
+      morning, evening,
+      total: morning + evening,
+      notes: document.getElementById('milkNotes').value,
+      createdAt: new Date().toISOString()
+    };
+    await DB.put('milk', record);
+    document.getElementById('milkMorning').value = '';
+    document.getElementById('milkEvening').value = '';
+    document.getElementById('milkNotes').value = '';
+    document.getElementById('milkTotalDisplay').textContent = 'Total: 0.0 L';
+    this.renderMilkHistory();
+    this.renderDashboard();
+    this.toast('✅ Milk record saved!');
+    this.syncToSheets();
+  },
+
+  async renderMilkHistory() {
+    const all = await DB.getAll('milk');
+    const filter = document.getElementById('milkHistoryFilter')?.value;
+    const filtered = filter ? all.filter(m => m.buffaloId === filter) : all;
+    const buffalo = await DB.getAll('buffalo');
+    const bMap = Object.fromEntries(buffalo.map(b => [b.id, b.name || b.tag || 'Unknown']));
+    filtered.sort((a, b) => b.date.localeCompare(a.date));
+    const tbody = document.getElementById('milkHistoryBody');
+    if (tbody) tbody.innerHTML = filtered.slice(0, 50).map(m => `
+      <tr>
+        <td>${m.date}</td>
+        <td>${bMap[m.buffaloId] || '—'}</td>
+        <td>${m.morning?.toFixed(1)||'—'}</td>
+        <td>${m.evening?.toFixed(1)||'—'}</td>
+        <td><strong>${parseFloat(m.total||0).toFixed(1)}L</strong></td>
+      </tr>
+    `).join('') || '<tr><td colspan="5" style="text-align:center;color:var(--text3);padding:20px">No records</td></tr>';
+  },
+
+  async generateMilkReport() {
+    const month = document.getElementById('milkReportMonth').value;
+    if (!month) { this.toast('⚠️ Select a month'); return; }
+    const all = await DB.getAll('milk');
+    const buffalo = await DB.getAll('buffalo');
+    const bMap = Object.fromEntries(buffalo.map(b => [b.id, b.name || b.tag || 'Unknown']));
+    const filtered = all.filter(m => m.date?.startsWith(month));
+    const totalL = filtered.reduce((s, m) => s + (parseFloat(m.total) || 0), 0);
+    const byBuf = {};
+    filtered.forEach(m => {
+      if (!byBuf[m.buffaloId]) byBuf[m.buffaloId] = 0;
+      byBuf[m.buffaloId] += parseFloat(m.total) || 0;
+    });
+    const out = document.getElementById('milkReportOutput');
+    out.innerHTML = `
+      <div style="background:var(--bg3);border-radius:var(--radius-sm);padding:16px;margin-bottom:12px">
+        <div style="font-size:13px;color:var(--text3);font-weight:700">TOTAL PRODUCTION</div>
+        <div style="font-size:32px;font-weight:900;color:var(--primary);margin-top:4px">${totalL.toFixed(1)} L</div>
+        <div style="font-size:13px;color:var(--text3);margin-top:2px">${filtered.length} records · ${Object.keys(byBuf).length} buffalo</div>
+      </div>
+      ${Object.entries(byBuf).sort((a,b)=>b[1]-a[1]).map(([id, total]) => `
+        <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border)">
+          <span style="font-weight:700">${bMap[id]||'Unknown'}</span>
+          <span style="font-weight:800;color:var(--primary)">${total.toFixed(1)} L</span>
+        </div>
+      `).join('')}
+    `;
+  },
+
+  switchMilkTab(tab, el) {
+    ['log','history','report'].forEach(t => {
+      document.getElementById('milkTab-'+t).style.display = t === tab ? 'block' : 'none';
+    });
+    el.parentElement.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    el.classList.add('active');
+    if (tab === 'history') this.renderMilkHistory();
+    if (tab === 'report') this.generateMilkReport();
+  },
+
+  // ===== HEALTH =====
+  async saveHealth() {
+    const buffaloId = document.getElementById('healthBuffalo').value;
+    const date = document.getElementById('healthDate').value;
+    if (!date) { this.toast('⚠️ Please enter a date'); return; }
+    const record = {
+      id: Date.now().toString(),
+      buffaloId, date,
+      type: document.getElementById('healthType').value,
+      notes: document.getElementById('healthNotes').value,
+      reminder: document.getElementById('healthReminder').value,
+      reminderNote: document.getElementById('healthReminderNote').value,
+      createdAt: new Date().toISOString()
+    };
+    await DB.put('health', record);
+    document.getElementById('healthNotes').value = '';
+    document.getElementById('healthReminder').value = '';
+    document.getElementById('healthReminderNote').value = '';
+    this.renderHealthHistory();
+    this.renderDashboard();
+    this.toast('✅ Health record saved!');
+    this.syncToSheets();
+  },
+
+  async renderHealthHistory() {
+    const all = await DB.getAll('health');
+    const buffalo = await DB.getAll('buffalo');
+    const bMap = Object.fromEntries(buffalo.map(b => [b.id, b.name || b.tag || 'Unknown']));
+    const filter = document.getElementById('healthHistoryFilter')?.value;
+    const filtered = filter ? all.filter(h => h.buffaloId === filter) : all;
+    filtered.sort((a, b) => b.date?.localeCompare(a.date));
+    const list = document.getElementById('healthHistoryList');
+    if (!list) return;
+    const icons = { vaccine:'💉', treatment:'💊', vet:'🩺', pregnancy:'🤰', other:'📝' };
+    list.innerHTML = filtered.length ? filtered.map(h => `
+      <div class="health-item ${h.type}">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start">
+          <div style="font-weight:700">${icons[h.type]||'📝'} ${bMap[h.buffaloId]||'Unknown'}</div>
+          <div style="font-size:12px;color:var(--text3)">${h.date}</div>
+        </div>
+        ${h.notes ? `<div style="font-size:13px;color:var(--text2);margin-top:4px">${h.notes}</div>` : ''}
+        ${h.reminder ? `<div class="health-meta">🔔 ${h.reminder} ${h.reminderNote ? '— '+h.reminderNote : ''}</div>` : ''}
+      </div>
+    `).join('') : '<div class="empty-state" style="padding:30px"><div style="font-size:32px">❤️</div><div style="font-size:13px;color:var(--text3);margin-top:6px">No health records</div></div>';
+  },
+
+  switchHealthTab(tab, el) {
+    ['add','history'].forEach(t => {
+      document.getElementById('healthTab-'+t).style.display = t === tab ? 'block' : 'none';
+    });
+    el.parentElement.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    el.classList.add('active');
+    if (tab === 'history') this.renderHealthHistory();
+  },
+
+  // ===== DASHBOARD =====
+  async renderDashboard() {
+    const buffalo = await DB.getAll('buffalo');
+    const milk = await DB.getAll('milk');
+    const health = await DB.getAll('health');
+    const today = new Date().toISOString().split('T')[0];
+
+    // Stats
+    const todayMilk = milk.filter(m => m.date === today).reduce((s, m) => s + (parseFloat(m.total)||0), 0);
+    const now = new Date();
+    const reminders = health.filter(h => h.reminder);
+    const upcoming = reminders.filter(h => h.reminder >= today && h.reminder <= new Date(now.getTime()+7*864e5).toISOString().split('T')[0]);
+    const overdue = reminders.filter(h => h.reminder < today);
+    const pregnantBuffalo = buffalo.filter(b => b.healthStatus === 'pregnant');
+
+    document.getElementById('stat-total').textContent = buffalo.length;
+    document.getElementById('stat-milk').textContent = todayMilk.toFixed(1) + ' L';
+    document.getElementById('stat-pregnant').textContent = pregnantBuffalo.length;
+    document.getElementById('stat-overdue').textContent = overdue.length;
+
+    // Pregnancy dashboard panel
+    const pregDiv = document.getElementById('pregnancyDashboard');
+    if (pregnantBuffalo.length) {
+      const GESTATION = 310;
+      const pregCards = pregnantBuffalo.map(b => {
+        if (!b.conceptionDate) return '';
+        const concDate = new Date(b.conceptionDate);
+        const deliveryDate = this.calcDeliveryDateFromConception(b.conceptionDate);
+        const daysIn = Math.max(0, Math.floor((now - concDate)/(24*60*60*1000)));
+        const daysLeft = Math.floor((deliveryDate - now)/(24*60*60*1000));
+        const progress = Math.min(100, Math.max(0, Math.round((daysIn/GESTATION)*100)));
+        return `
+          <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #f9a8d4;cursor:pointer" onclick="App.viewBuffalo('${b.id}')">
+            <div style="width:34px;height:34px;border-radius:10px;background:#fce7f3;display:flex;align-items:center;justify-content:center;font-size:18px;overflow:hidden;flex-shrink:0">
+              🐃
+            </div>
+            <div style="flex:1;min-width:0">
+              <div style="font-weight:700;font-size:14px;color:#be185d">${b.name||b.tag||'Unnamed'}</div>
+              <div class="preg-progress-wrap" style="margin:4px 0 2px"><div class="preg-progress-bar" style="width:${progress}%"></div></div>
+              <div style="font-size:11px;color:#9d174d">${daysLeft > 0 ? `${daysLeft} days left` : daysLeft === 0 ? '🎉 Due today!' : `⚠️ ${Math.abs(daysLeft)}d overdue`}</div>
+            </div>
+            <div style="text-align:right;flex-shrink:0">
+              <div style="font-size:18px;font-weight:900;color:#be185d">${progress}%</div>
+              <div style="font-size:10px;color:#9d174d;font-weight:700">COMPLETE</div>
+            </div>
+          </div>
+        `;
+      }).filter(Boolean).join('');
+      if (pregCards) {
+        pregDiv.innerHTML = `
+          <div class="pregnancy-alert" style="margin-bottom:14px">
+            <div class="pregnancy-alert-title">🤰 Pregnancy Tracker</div>
+            ${pregCards}
+          </div>
+        `;
+      } else { pregDiv.innerHTML = ''; }
+    } else { pregDiv.innerHTML = ''; }
+
+    // Chart
+    this.renderMilkChart(milk);
+
+    // Reminders
+    const bMap = Object.fromEntries(buffalo.map(b => [b.id, b.name || b.tag || 'Unknown']));
+    const allReminders = [...overdue, ...upcoming].sort((a,b) => a.reminder.localeCompare(b.reminder));
+    const remDiv = document.getElementById('upcomingReminders');
+    remDiv.innerHTML = allReminders.length ? allReminders.map(h => `
+      <div class="reminder-item">
+        <div class="reminder-dot ${h.reminder < today ? 'overdue' : 'ok'}"></div>
+        <div style="flex:1">
+          <div style="font-weight:700;font-size:14px">${bMap[h.buffaloId]||'Unknown'} — ${h.reminderNote||h.type}</div>
+          <div style="font-size:12px;color:var(--text3)">${h.reminder} ${h.reminder < today ? '⚠️ OVERDUE' : ''}</div>
+        </div>
+      </div>
+    `).join('') : '<div style="color:var(--text3);font-size:13px;text-align:center;padding:16px">No upcoming reminders</div>';
+
+    // Recent
+    const recentDiv = document.getElementById('recentRecords');
+    const recent = buffalo.slice(-3).reverse();
+    recentDiv.innerHTML = recent.length ? recent.map(b => {
+      const status = b.healthStatus || 'good';
+      const statusColors = { good: '#dcfce7', sick: '#fee2e2', recovering: '#fef9c3', pregnant: '#fce7f3' };
+      return `
+      <div style="display:flex;align-items:center;gap:12px;padding:8px 0;border-bottom:1px solid var(--border);cursor:pointer" onclick="App.viewBuffalo('${b.id}')">
+        <div style="width:36px;height:36px;border-radius:10px;background:${statusColors[status]||'var(--bg3)'};display:flex;align-items:center;justify-content:center;font-size:18px;overflow:hidden;flex-shrink:0">
+          🐃
+        </div>
+        <div style="flex:1">
+          <div style="font-weight:700;font-size:14px">${b.name||b.tag||'Unnamed'}</div>
+          <div style="font-size:12px;color:var(--text3)">${b.breed||'Unknown breed'}</div>
+        </div>
+      </div>
+      `;
+    }).join('') : '<div style="color:var(--text3);font-size:13px;text-align:center;padding:16px">No buffalo added yet</div>';
+  },
+
+  renderMilkChart(milk) {
+    const ctx = document.getElementById('milkChart').getContext('2d');
+    const days = [];
+    const vals = [];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      const ds = d.toISOString().split('T')[0];
+      days.push(d.toLocaleDateString('en', { weekday: 'short' }));
+      vals.push(milk.filter(m => m.date === ds).reduce((s,m) => s+(parseFloat(m.total)||0), 0));
+    }
+    if (this.milkChart) this.milkChart.destroy();
+    const style = getComputedStyle(document.documentElement);
+    const primary = style.getPropertyValue('--primary').trim() || '#1a6b3c';
+    this.milkChart = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: days,
+        datasets: [{ label: 'Litres', data: vals, backgroundColor: primary + '99', borderColor: primary, borderWidth: 2, borderRadius: 6 }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          y: { beginAtZero: true, grid: { color: 'rgba(128,128,128,0.1)' }, ticks: { color: style.getPropertyValue('--text3').trim() } },
+          x: { grid: { display: false }, ticks: { color: style.getPropertyValue('--text3').trim() } }
+        }
+      }
+    });
+  },
+
+  // ===== POPULATE SELECTS =====
+  async populateBuffaloSelects() {
+    const all = await DB.getAll('buffalo');
+    const opts = all.map(b => `<option value="${b.id}">${b.name || b.tag || 'Unnamed'}</option>`).join('');
+    ['milkBuffalo','healthBuffalo','milkHistoryFilter','healthHistoryFilter'].forEach(id => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      const isFilter = id.includes('Filter');
+      el.innerHTML = (isFilter ? '<option value="">All Buffalo</option>' : '<option value="">Select buffalo...</option>') + opts;
+    });
+  },
+
+  async initMilkForm() { await this.populateBuffaloSelects(); }
+  ,
+  async initHealthForm() { await this.populateBuffaloSelects(); },
+
+  // ===== EXCEL EXPORT =====
+  async exportExcel() {
+    const buffalo = await DB.getAll('buffalo');
+    const milk = await DB.getAll('milk');
+    const health = await DB.getAll('health');
+
+    const wb = XLSX.utils.book_new();
+
+    // Buffalo sheet
+    const bData = buffalo.map(b => ({
+      ID: b.id, Tag: b.tag, Name: b.name, Breed: b.breed, Gender: b.gender,
+      DOB: b.dob, Weight_kg: b.weight, Notes: b.notes, ...b.custom
+    }));
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(bData), 'Buffalo');
+
+    // Milk sheet
+    const bMap = Object.fromEntries(buffalo.map(b => [b.id, b.name || b.tag]));
+    const mData = milk.map(m => ({ Date: m.date, Buffalo: bMap[m.buffaloId]||m.buffaloId, Morning_L: m.morning, Evening_L: m.evening, Total_L: m.total, Notes: m.notes }));
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(mData), 'Milk');
+
+    // Health sheet
+    const hData = health.map(h => ({ Date: h.date, Buffalo: bMap[h.buffaloId]||h.buffaloId, Type: h.type, Notes: h.notes, Reminder: h.reminder, Reminder_Note: h.reminderNote }));
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(hData), 'Health');
+
+    XLSX.writeFile(wb, `buffalo-manager-${new Date().toISOString().split('T')[0]}.xlsx`);
+    this.toast('📊 Excel exported!');
+  },
+
+  async importExcel(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = async ev => {
+      try {
+        const wb = XLSX.read(ev.target.result, { type: 'array' });
+        let count = 0;
+        if (wb.Sheets['Buffalo']) {
+          const rows = XLSX.utils.sheet_to_json(wb.Sheets['Buffalo']);
+          for (const row of rows) {
+            if (!row.ID) continue;
+            await DB.put('buffalo', { id: String(row.ID), tag: row.Tag, name: row.Name, breed: row.Breed, gender: row.Gender, dob: row.DOB, weight: row.Weight_kg, notes: row.Notes, custom: {}, createdAt: new Date().toISOString() });
+            count++;
+          }
+        }
+        this.renderBuffaloList();
+        this.renderDashboard();
+        this.toast(`✅ Imported ${count} buffalo records`);
+      } catch (err) { this.toast('❌ Import failed: ' + err.message); }
+    };
+    reader.readAsArrayBuffer(file);
+    e.target.value = '';
+  },
+
+  // ===== SHEETDB INTEGRATION =====
+  SHEETDB_URL: 'https://sheetdb.io/api/v1/jsagg0x1klhx9',
+
+  setupGoogleSheets() {
+    document.getElementById('modalSheets').classList.add('open');
+    this.sheetdbTestConnection();
+  },
+
+  // Keep legacy save stub (settings panel calls this)
+  async saveGoogleSheets() {
+    this.closeModal('modalSheets');
+  },
+
+  sheetdbLog(msg) {
+    const log = document.getElementById('sheetdbSyncLog');
+    if (!log) return;
+    const ts = new Date().toLocaleTimeString();
+    log.innerHTML = `<div>[${ts}] ${msg}</div>` + log.innerHTML;
+  },
+
+  async sheetdbTestConnection() {
+    const box = document.getElementById('sheetdbStatusBox');
+    const icon = document.getElementById('sheetdbStatusIcon');
+    const text = document.getElementById('sheetdbStatusText');
+    const sub = document.getElementById('sheetdbStatusSub');
+    if (box) box.style.background = 'var(--bg3)';
+    if (text) text.textContent = 'Connecting…';
+    if (icon) icon.textContent = '⏳';
+    try {
+      const r = await fetch(`${this.SHEETDB_URL}?limit=1`);
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      if (box) box.style.background = '#dcfce7';
+      if (icon) icon.textContent = '✅';
+      if (text) { text.textContent = 'Connected to SheetDB'; text.style.color = '#15803d'; }
+      if (sub) sub.textContent = 'Your data syncs to Google Sheets automatically';
+      document.getElementById('sheetsStatus') && (document.getElementById('sheetsStatus').textContent = '✅ Connected');
+      document.getElementById('backupSheetsStatus') && (document.getElementById('backupSheetsStatus').textContent = '✅ Connected to SheetDB');
+      this.sheetdbLog('✅ Connection successful');
+    } catch(e) {
+      if (box) box.style.background = '#fee2e2';
+      if (icon) icon.textContent = '❌';
+      if (text) { text.textContent = 'Connection failed'; text.style.color = '#dc2626'; }
+      if (sub) sub.textContent = e.message;
+      this.sheetdbLog('❌ Connection failed: ' + e.message);
+    }
+  },
+
+  // Sync a single record to SheetDB (upsert via DELETE then POST)
+  async syncToSheets() {
+    // Called after every save — triggers immediate sync
+    this._syncCountdown = 1; // will fire on next countdown tick
+    // Also push immediately in background
+    try { await this._sheetdbPushAll_silent(); this._setSyncBar('ok'); } catch(e) { this._setSyncBar('error', e.message); }
+  },
+
+  async _sheetdbPushAll_silent() {
+    const buffalo = await DB.getAll('buffalo');
+    const milk    = await DB.getAll('milk');
+    const health  = await DB.getAll('health');
+
+    // Push each sheet: delete all existing rows then insert fresh
+    for (const [sheet, records] of [['buffalo', buffalo], ['milk', milk], ['health', health]]) {
+      // Delete all rows in this sheet
+      await fetch(`${this.SHEETDB_URL}/all?sheet=${encodeURIComponent(sheet)}`, { method: 'DELETE' });
+      if (records.length) {
+        const flat = records.map(r => this._flattenRecord(r, sheet));
+        const res = await fetch(`${this.SHEETDB_URL}?sheet=${encodeURIComponent(sheet)}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ data: flat })
+        });
+        if (!res.ok) {
+          const txt = await res.text();
+          throw new Error(`${sheet}: ${res.status} ${txt.slice(0,80)}`);
+        }
+      }
+    }
+  },
+
+  async _sheetdbPushStore(sheet) {
+    const records = await DB.getAll(sheet);
+    await fetch(`${this.SHEETDB_URL}/all?sheet=${encodeURIComponent(sheet)}`, { method: 'DELETE' });
+    if (!records.length) return;
+    const flat = records.map(r => this._flattenRecord(r, sheet));
+    const res = await fetch(`${this.SHEETDB_URL}?sheet=${encodeURIComponent(sheet)}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ data: flat })
+    });
+    if (!res.ok) {
+      const txt = await res.text();
+      throw new Error(`${sheet}: ${res.status} ${txt.slice(0, 80)}`);
+    }
+  },
+
+  _flattenRecord(r, sheet) {
+    // SheetDB requires all values to be strings — never numbers, null, or undefined
+    const s = v => (v === null || v === undefined) ? '' : String(v);
+    if (sheet === 'buffalo') {
+      return {
+        id: s(r.id), tag: s(r.tag), name: s(r.name),
+        breed: s(r.breed), gender: s(r.gender), dob: s(r.dob),
+        weight: s(r.weight), notes: s(r.notes),
+        healthStatus: s(r.healthStatus) || 'good',
+        conceptionDate: s(r.conceptionDate),
+        // photo omitted — base64 blobs exceed SheetDB payload limit
+        createdAt: s(r.createdAt)
+      };
+    }
+    if (sheet === 'milk') {
+      return {
+        id: s(r.id), buffaloId: s(r.buffaloId), date: s(r.date),
+        morning: s(r.morning), evening: s(r.evening),
+        total: s(r.total), notes: s(r.notes), createdAt: s(r.createdAt)
+      };
+    }
+    if (sheet === 'health') {
+      return {
+        id: s(r.id), buffaloId: s(r.buffaloId), date: s(r.date),
+        type: s(r.type), notes: s(r.notes),
+        reminder: s(r.reminder), reminderNote: s(r.reminderNote),
+        createdAt: s(r.createdAt)
+      };
+    }
+    // Fallback: stringify every value in the object
+    return Object.fromEntries(Object.entries(r).map(([k, v]) => [k, s(v)]));
+  },
+
+  async sheetdbPushAll() {
+    this.sheetdbLog('⬆️ Pushing all data to SheetDB…');
+    this._setSyncBar('syncing');
+    try {
+      await this._sheetdbPushAll_silent();
+      const buffalo = await DB.getAll('buffalo');
+      const milk    = await DB.getAll('milk');
+      const health  = await DB.getAll('health');
+      this.sheetdbLog(`✅ Pushed ${buffalo.length} buffalo, ${milk.length} milk, ${health.length} health records`);
+      this._setSyncBar('ok');
+      this.toast('☁️ All data pushed to SheetDB!');
+      await this.saveSetting('lastBackup', new Date().toISOString());
+    } catch(e) {
+      this.sheetdbLog('❌ Push failed: ' + e.message);
+      this._setSyncBar('error', e.message);
+      this.toast('❌ Push failed: ' + e.message);
+    }
+  },
+
+  async sheetdbPullAll() {
+    this.sheetdbLog('⬇️ Pulling data from SheetDB…');
+    try {
+      const pullSheet = async (sheet) => {
+        const r = await fetch(`${this.SHEETDB_URL}?sheet=${sheet}`);
+        if (!r.ok) throw new Error(`${sheet}: HTTP ${r.status}`);
+        return await r.json();
+      };
+
+      const [buffaloRows, milkRows, healthRows] = await Promise.all([
+        pullSheet('buffalo'), pullSheet('milk'), pullSheet('health')
+      ]);
+
+      let bCount = 0, mCount = 0, hCount = 0;
+
+      for (const row of (Array.isArray(buffaloRows) ? buffaloRows : [])) {
+        if (!row.id) continue;
+        await DB.put('buffalo', {
+          id: row.id, tag: row.tag||'', name: row.name||'',
+          breed: row.breed||'', gender: row.gender||'', dob: row.dob||'',
+          weight: row.weight||'', notes: row.notes||'',
+          healthStatus: row.healthStatus||'good',
+          conceptionDate: row.conceptionDate||'',
+          custom: {}, createdAt: row.createdAt||new Date().toISOString()
+        });
+        bCount++;
+      }
+
+      for (const row of (Array.isArray(milkRows) ? milkRows : [])) {
+        if (!row.id) continue;
+        await DB.put('milk', {
+          id: row.id, buffaloId: row.buffaloId||'', date: row.date||'',
+          morning: parseFloat(row.morning)||0, evening: parseFloat(row.evening)||0,
+          total: parseFloat(row.total)||0, notes: row.notes||'',
+          createdAt: row.createdAt||new Date().toISOString()
+        });
+        mCount++;
+      }
+
+      for (const row of (Array.isArray(healthRows) ? healthRows : [])) {
+        if (!row.id) continue;
+        await DB.put('health', {
+          id: row.id, buffaloId: row.buffaloId||'', date: row.date||'',
+          type: row.type||'other', notes: row.notes||'',
+          reminder: row.reminder||'', reminderNote: row.reminderNote||'',
+          createdAt: row.createdAt||new Date().toISOString()
+        });
+        hCount++;
+      }
+
+      this.sheetdbLog(`✅ Pulled ${bCount} buffalo, ${mCount} milk, ${hCount} health records`);
+      this.toast(`⬇️ Pulled ${bCount} buffalo from SheetDB!`);
+      this.renderBuffaloList();
+      this.renderDashboard();
+      this.populateBuffaloSelects();
+    } catch(e) {
+      this.sheetdbLog('❌ Pull failed: ' + e.message);
+      this.toast('❌ Pull failed: ' + e.message);
+    }
+  },
+
+  // ===== SEARCH =====
+  openSearch() {
+    document.getElementById('modalSearch').classList.add('open');
+    setTimeout(() => document.getElementById('globalSearch').focus(), 100);
+  },
+
+  async globalSearch() {
+    const q = document.getElementById('globalSearch').value.toLowerCase().trim();
+    const res = document.getElementById('globalSearchResults');
+    if (!q) { res.innerHTML = ''; return; }
+    const buffalo = await DB.getAll('buffalo');
+    const health = await DB.getAll('health');
+    const milk = await DB.getAll('milk');
+    const bMap = Object.fromEntries(buffalo.map(b => [b.id, b.name || b.tag || 'Unnamed']));
+    const bMatches = buffalo.filter(b => (b.name+b.tag+b.breed+b.notes).toLowerCase().includes(q));
+    const hMatches = health.filter(h => (h.notes+h.type+h.reminderNote).toLowerCase().includes(q));
+    res.innerHTML = [
+      ...bMatches.map(b => `<div class="buffalo-card" style="margin-bottom:8px" onclick="App.closeModal('modalSearch');App.viewBuffalo('${b.id}')">
+        <div class="buffalo-avatar">'🐃'</div>
+        <div><div class="buffalo-name">${b.name||b.tag}</div><div class="buffalo-sub">${b.breed||''}</div></div>
+      </div>`),
+      ...hMatches.map(h => `<div class="health-item ${h.type}" style="margin-bottom:8px">
+        <div style="font-weight:700">${bMap[h.buffaloId]||'Unknown'} — ${h.type}</div>
+        <div class="health-meta">${h.date} · ${h.notes||''}</div>
+      </div>`)
+    ].join('') || `<div style="color:var(--text3);text-align:center;padding:24px">No results for "${q}"</div>`;
+  },
+
+  // ===== FARM HELP =====
+  async searchHelp() {
+    const q = document.getElementById('helpSearchInput').value.trim();
+    if (!q) return;
+    const res = document.getElementById('helpResults');
+    res.innerHTML = '<div style="text-align:center;padding:30px;color:var(--text3)"><div style="font-size:32px">🔍</div><div style="margin-top:8px">Searching...</div></div>';
+    try {
+      const url = `https://api.anthropic.com/v1/messages`;
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-20250514',
+          max_tokens: 1000,
+          system: 'You are a buffalo farming expert. Answer the user\'s question with practical, helpful advice. Give 3-4 specific tips. Format as JSON: {"title":"...", "tips":[{"heading":"...","content":"..."}], "warning":"optional warning"}. Only JSON, no markdown.',
+          messages: [{ role: 'user', content: `Buffalo farming question: ${q}` }]
+        })
+      });
+      const data = await response.json();
+      const text = data.content?.[0]?.text || '{}';
+      let info;
+      try { info = JSON.parse(text.replace(/```json|```/g,'')); } catch(e) { info = { title: q, tips: [{ heading: 'Information', content: text }] }; }
+      res.innerHTML = `
+        <div class="card" style="margin-bottom:12px">
+          <div style="font-weight:800;font-size:17px;color:var(--primary);margin-bottom:12px">🌿 ${info.title||q}</div>
+          ${(info.tips||[]).map(t => `
+            <div style="margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid var(--border)">
+              <div style="font-weight:700;margin-bottom:4px">✅ ${t.heading}</div>
+              <div style="font-size:13px;color:var(--text2);line-height:1.6">${t.content}</div>
+            </div>
+          `).join('')}
+          ${info.warning ? `<div style="background:#fef3c7;border-radius:8px;padding:10px 12px;font-size:13px;color:#92400e">⚠️ ${info.warning}</div>` : ''}
+        </div>
+        <div style="text-align:center;margin-top:12px">
+          <a href="https://www.google.com/search?q=${encodeURIComponent('buffalo farming '+q)}" target="_blank" class="btn btn-outline btn-sm" style="display:inline-flex">🌐 More Results on Google</a>
+        </div>
+      `;
+    } catch(e) {
+      res.innerHTML = `
+        <div class="card">
+          <div style="font-weight:700;margin-bottom:8px">Search: "${q}"</div>
+          <div style="font-size:13px;color:var(--text2);margin-bottom:12px">For detailed farming advice, visit these resources:</div>
+          <a href="https://www.google.com/search?q=buffalo+farming+${encodeURIComponent(q)}" target="_blank" class="btn btn-outline btn-sm" style="display:inline-flex;margin-bottom:8px;width:100%">🌐 Google Search</a>
+          <a href="https://www.nabard.org" target="_blank" class="btn btn-ghost btn-sm" style="display:inline-flex;width:100%">🇮🇳 NABARD Resources</a>
+        </div>
+      `;
+    }
+  },
+
+  quickSearch(q) {
+    document.getElementById('helpSearchInput').value = q;
+    this.searchHelp();
+  },
+
+  // ===== CLEAR DATA =====
+  async clearAllData() {
+    if (!confirm('⚠️ This will delete ALL buffalo, milk, and health records permanently. Are you sure?')) return;
+    if (!confirm('This cannot be undone. Continue?')) return;
+    await DB.clear('buffalo');
+    await DB.clear('milk');
+    await DB.clear('health');
+    this.renderBuffaloList();
+    this.renderDashboard();
+    this.toast('🗑️ All data cleared');
+  },
+
+  // ===== BACKUP PANEL =====
+  async openBackupPanel() {
+    const buffalo = await DB.getAll('buffalo');
+    const milk = await DB.getAll('milk');
+    const health = await DB.getAll('health');
+
+    // Stats chips
+    document.getElementById('backupStats').innerHTML = `
+      <div class="backup-stat-chip"><div class="bsv">${buffalo.length}</div><div class="bsl">🐃 Buffalo</div></div>
+      <div class="backup-stat-chip"><div class="bsv">${milk.length}</div><div class="bsl">🥛 Milk</div></div>
+      <div class="backup-stat-chip"><div class="bsv">${health.length}</div><div class="bsl">❤️ Health</div></div>
+    `;
+
+    // Sheets status
+    const sheetsEl = document.getElementById('backupSheetsStatus');
+    if (sheetsEl) sheetsEl.textContent = '✅ SheetDB connected — tap to sync';
+
+    // Last backup
+    const lastBackup = this.settings.lastBackup;
+    const lbEl = document.getElementById('lastBackupInfo');
+    if (lbEl) lbEl.textContent = lastBackup ? `Last backup: ${new Date(lastBackup).toLocaleString()}` : 'Last backup: Never';
+
+    document.getElementById('modalBackup').classList.add('open');
+  },
+
+  async exportJSON() {
+    const buffalo = await DB.getAll('buffalo');
+    const milk = await DB.getAll('milk');
+    const health = await DB.getAll('health');
+    const payload = {
+      version: 1,
+      exportedAt: new Date().toISOString(),
+      farmName: this.settings.farmName || 'Buffalo Manager',
+      buffalo, milk, health
+    };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `buffalo-backup-${new Date().toISOString().split('T')[0]}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    await this.saveSetting('lastBackup', new Date().toISOString());
+    this.toast('💾 JSON backup downloaded!');
+  },
+
+  async importJSON(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = async ev => {
+      try {
+        const data = JSON.parse(ev.target.result);
+        if (!data.buffalo && !data.milk && !data.health) throw new Error('Invalid backup file');
+        if (!confirm(`Restore backup from ${data.exportedAt ? new Date(data.exportedAt).toLocaleDateString() : 'unknown date'}?\nThis will merge with existing data.`)) return;
+        let count = 0;
+        for (const b of data.buffalo || []) { await DB.put('buffalo', b); count++; }
+        for (const m of data.milk || []) { await DB.put('milk', m); }
+        for (const h of data.health || []) { await DB.put('health', h); }
+        this.renderBuffaloList();
+        this.renderDashboard();
+        this.closeModal('modalBackup');
+        this.toast(`✅ Restored ${count} buffalo + records`);
+      } catch(err) { this.toast('❌ Restore failed: ' + err.message); }
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  },
+
+  // Mark backup btn if data exists
+  async updateBackupBtnState() {
+    const buffalo = await DB.getAll('buffalo');
+    document.getElementById('backupBtn')?.classList.toggle('has-data', buffalo.length > 0);
+  },
+
+  // ===== TOAST =====
+  toast(msg, dur = 2500) {
+    const el = document.getElementById('toast');
+    el.textContent = msg;
+    el.classList.add('show');
+    clearTimeout(this._toastTimer);
+    this._toastTimer = setTimeout(() => el.classList.remove('show'), dur);
+  }
+};
+
+// ===== INIT =====
+App.init();
+
+// Register Service Worker
+if ('serviceWorker' in navigator) {
+  const sw = `
+    const CACHE = 'buffalo-manager-v1';
+    self.addEventListener('install', e => {
+      self.skipWaiting();
+    });
+    self.addEventListener('fetch', e => {
+      e.respondWith(fetch(e.request).catch(() => caches.match(e.request)));
+    });
+  `;
+  const blob = new Blob([sw], { type: 'application/javascript' });
+  const url = URL.createObjectURL(blob);
+  navigator.serviceWorker.register(url).catch(() => {});
+}
+</script>
+</body>
+</html>
