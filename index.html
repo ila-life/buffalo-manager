@@ -1057,6 +1057,7 @@ const App = {
   _syncCountdown: 60,
   _syncTimer: null,
   _countdownTimer: null,
+  _pendingSheetDbKey: 'buffalo-manager-sheetdb-pending',
 
   _startAutoSync() {
     // Immediate first sync
@@ -1079,7 +1080,7 @@ const App = {
       await this._sheetdbPushAll_silent();
       this._setSyncBar('ok');
     } catch(e) {
-      this._setSyncBar('error', e.message);
+      this._setSyncBar('warning', e.message);
     }
   },
 
@@ -1095,6 +1096,10 @@ const App = {
       const now = new Date().toLocaleTimeString('en-IN', { hour:'2-digit', minute:'2-digit', second:'2-digit' });
       status.textContent = `✅ Synced — ${now}`;
       document.getElementById('sheetsStatus') && (document.getElementById('sheetsStatus').textContent = '✅ SheetDB live');
+    } else if (state === 'warning') {
+      bar.style.background = '#854d0e';
+      status.textContent = `⚠️ ${msg || 'Saved locally — remote sync pending'}`;
+      document.getElementById('sheetsStatus') && (document.getElementById('sheetsStatus').textContent = '⚠️ Local backup ready');
     } else if (state === 'error') {
       bar.style.background = '#7f1d1d';
       status.textContent = `❌ Sync failed — ${msg || 'check connection'}`;
@@ -1920,7 +1925,21 @@ const App = {
     // Called after every save — triggers immediate sync
     this._syncCountdown = 1; // will fire on next countdown tick
     // Also push immediately in background
-    try { await this._sheetdbPushAll_silent(); this._setSyncBar('ok'); } catch(e) { this._setSyncBar('error', e.message); }
+    try { await this._sheetdbPushAll_silent(); this._setSyncBar('ok'); } catch(e) { this._setSyncBar('warning', e.message); }
+  },
+
+  _persistPendingSheetDbSync(sheet, records) {
+    try {
+      const pending = JSON.parse(localStorage.getItem(this._pendingSheetDbKey) || '{}');
+      pending[sheet] = {
+        updatedAt: new Date().toISOString(),
+        count: Array.isArray(records) ? records.length : 0,
+        records: Array.isArray(records) ? records : []
+      };
+      localStorage.setItem(this._pendingSheetDbKey, JSON.stringify(pending));
+    } catch (e) {
+      console.warn('Unable to save pending SheetDB sync', e);
+    }
   },
 
   async _sheetdbPushAll_silent() {
@@ -1928,22 +1947,33 @@ const App = {
     const milk    = await DB.getAll('milk');
     const health  = await DB.getAll('health');
 
+    const failures = [];
+
     // Push each sheet: delete all existing rows then insert fresh
     for (const [sheet, records] of [['buffalo', buffalo], ['milk', milk], ['health', health]]) {
-      // Delete all rows in this sheet
-      await fetch(`${this.SHEETDB_URL}/all?sheet=${encodeURIComponent(sheet)}`, { method: 'DELETE' });
-      if (records.length) {
-        const flat = records.map(r => this._flattenRecord(r, sheet));
-        const res = await fetch(`${this.SHEETDB_URL}?sheet=${encodeURIComponent(sheet)}`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ data: flat })
-        });
-        if (!res.ok) {
-          const txt = await res.text();
-          throw new Error(`${sheet}: ${res.status} ${txt.slice(0,80)}`);
+      try {
+        // Delete all rows in this sheet
+        await fetch(`${this.SHEETDB_URL}/all?sheet=${encodeURIComponent(sheet)}`, { method: 'DELETE' });
+        if (records.length) {
+          const flat = records.map(r => this._flattenRecord(r, sheet));
+          const res = await fetch(`${this.SHEETDB_URL}?sheet=${encodeURIComponent(sheet)}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ data: flat })
+          });
+          if (!res.ok) {
+            const txt = await res.text();
+            throw new Error(`${sheet}: ${res.status} ${txt.slice(0,80)}`);
+          }
         }
+      } catch (e) {
+        this._persistPendingSheetDbSync(sheet, records);
+        failures.push(e.message);
       }
+    }
+
+    if (failures.length) {
+      throw new Error(`Saved locally and queued for retry (${failures.join('; ')})`);
     }
   },
 
@@ -1963,33 +1993,40 @@ const App = {
     }
   },
 
+  _pickSheetValue(row, keys) {
+    for (const key of keys) {
+      const value = row?.[key];
+      if (value !== undefined && value !== null && value !== '') return value;
+    }
+    return '';
+  },
+
   _flattenRecord(r, sheet) {
-    // SheetDB requires all values to be strings — never numbers, null, or undefined
+    // SheetDB expects the exact spreadsheet header names, so use the same casing as the sheet columns.
     const s = v => (v === null || v === undefined) ? '' : String(v);
     if (sheet === 'buffalo') {
       return {
-        id: s(r.id), tag: s(r.tag), name: s(r.name),
-        breed: s(r.breed), gender: s(r.gender), dob: s(r.dob),
-        weight: s(r.weight), notes: s(r.notes),
-        healthStatus: s(r.healthStatus) || 'good',
-        conceptionDate: s(r.conceptionDate),
-        // photo omitted — base64 blobs exceed SheetDB payload limit
-        createdAt: s(r.createdAt)
+        ID: s(r.id), Tag: s(r.tag), Name: s(r.name),
+        Breed: s(r.breed), Gender: s(r.gender), DOB: s(r.dob),
+        Weight_kg: s(r.weight), Notes: s(r.notes),
+        HealthStatus: s(r.healthStatus) || 'good',
+        ConceptionDate: s(r.conceptionDate),
+        CreatedAt: s(r.createdAt)
       };
     }
     if (sheet === 'milk') {
       return {
-        id: s(r.id), buffaloId: s(r.buffaloId), date: s(r.date),
-        morning: s(r.morning), evening: s(r.evening),
-        total: s(r.total), notes: s(r.notes), createdAt: s(r.createdAt)
+        ID: s(r.id), BuffaloID: s(r.buffaloId), Date: s(r.date),
+        Morning: s(r.morning), Evening: s(r.evening),
+        Total: s(r.total), Notes: s(r.notes), CreatedAt: s(r.createdAt)
       };
     }
     if (sheet === 'health') {
       return {
-        id: s(r.id), buffaloId: s(r.buffaloId), date: s(r.date),
-        type: s(r.type), notes: s(r.notes),
-        reminder: s(r.reminder), reminderNote: s(r.reminderNote),
-        createdAt: s(r.createdAt)
+        ID: s(r.id), BuffaloID: s(r.buffaloId), Date: s(r.date),
+        Type: s(r.type), Notes: s(r.notes),
+        Reminder: s(r.reminder), ReminderNote: s(r.reminderNote),
+        CreatedAt: s(r.createdAt)
       };
     }
     // Fallback: stringify every value in the object
@@ -2009,9 +2046,9 @@ const App = {
       this.toast('☁️ All data pushed to SheetDB!');
       await this.saveSetting('lastBackup', new Date().toISOString());
     } catch(e) {
-      this.sheetdbLog('❌ Push failed: ' + e.message);
-      this._setSyncBar('error', e.message);
-      this.toast('❌ Push failed: ' + e.message);
+      this.sheetdbLog('⚠️ Sync queued locally: ' + e.message);
+      this._setSyncBar('warning', e.message);
+      this.toast('⚠️ Sync queued locally — remote SheetDB write failed');
     }
   },
 
@@ -2031,36 +2068,39 @@ const App = {
       let bCount = 0, mCount = 0, hCount = 0;
 
       for (const row of (Array.isArray(buffaloRows) ? buffaloRows : [])) {
-        if (!row.id) continue;
+        const id = this._pickSheetValue(row, ['ID', 'id']);
+        if (!id) continue;
         await DB.put('buffalo', {
-          id: row.id, tag: row.tag||'', name: row.name||'',
-          breed: row.breed||'', gender: row.gender||'', dob: row.dob||'',
-          weight: row.weight||'', notes: row.notes||'',
-          healthStatus: row.healthStatus||'good',
-          conceptionDate: row.conceptionDate||'',
-          custom: {}, createdAt: row.createdAt||new Date().toISOString()
+          id, tag: this._pickSheetValue(row, ['Tag', 'tag'])||'', name: this._pickSheetValue(row, ['Name', 'name'])||'',
+          breed: this._pickSheetValue(row, ['Breed', 'breed'])||'', gender: this._pickSheetValue(row, ['Gender', 'gender'])||'', dob: this._pickSheetValue(row, ['DOB', 'dob'])||'',
+          weight: this._pickSheetValue(row, ['Weight_kg', 'weight'])||'', notes: this._pickSheetValue(row, ['Notes', 'notes'])||'',
+          healthStatus: this._pickSheetValue(row, ['HealthStatus', 'healthStatus'])||'good',
+          conceptionDate: this._pickSheetValue(row, ['ConceptionDate', 'conceptionDate'])||'',
+          custom: {}, createdAt: this._pickSheetValue(row, ['CreatedAt', 'createdAt'])||new Date().toISOString()
         });
         bCount++;
       }
 
       for (const row of (Array.isArray(milkRows) ? milkRows : [])) {
-        if (!row.id) continue;
+        const id = this._pickSheetValue(row, ['ID', 'id']);
+        if (!id) continue;
         await DB.put('milk', {
-          id: row.id, buffaloId: row.buffaloId||'', date: row.date||'',
-          morning: parseFloat(row.morning)||0, evening: parseFloat(row.evening)||0,
-          total: parseFloat(row.total)||0, notes: row.notes||'',
-          createdAt: row.createdAt||new Date().toISOString()
+          id, buffaloId: this._pickSheetValue(row, ['BuffaloID', 'buffaloId'])||'', date: this._pickSheetValue(row, ['Date', 'date'])||'',
+          morning: parseFloat(this._pickSheetValue(row, ['Morning', 'morning']))||0, evening: parseFloat(this._pickSheetValue(row, ['Evening', 'evening']))||0,
+          total: parseFloat(this._pickSheetValue(row, ['Total', 'total']))||0, notes: this._pickSheetValue(row, ['Notes', 'notes'])||'',
+          createdAt: this._pickSheetValue(row, ['CreatedAt', 'createdAt'])||new Date().toISOString()
         });
         mCount++;
       }
 
       for (const row of (Array.isArray(healthRows) ? healthRows : [])) {
-        if (!row.id) continue;
+        const id = this._pickSheetValue(row, ['ID', 'id']);
+        if (!id) continue;
         await DB.put('health', {
-          id: row.id, buffaloId: row.buffaloId||'', date: row.date||'',
-          type: row.type||'other', notes: row.notes||'',
-          reminder: row.reminder||'', reminderNote: row.reminderNote||'',
-          createdAt: row.createdAt||new Date().toISOString()
+          id, buffaloId: this._pickSheetValue(row, ['BuffaloID', 'buffaloId'])||'', date: this._pickSheetValue(row, ['Date', 'date'])||'',
+          type: this._pickSheetValue(row, ['Type', 'type'])||'other', notes: this._pickSheetValue(row, ['Notes', 'notes'])||'',
+          reminder: this._pickSheetValue(row, ['Reminder', 'reminder'])||'', reminderNote: this._pickSheetValue(row, ['ReminderNote', 'reminderNote'])||'',
+          createdAt: this._pickSheetValue(row, ['CreatedAt', 'createdAt'])||new Date().toISOString()
         });
         hCount++;
       }
